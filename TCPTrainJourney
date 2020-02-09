@@ -1,0 +1,172 @@
+/* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
+/*
+ * Copyright (c) 2011-2018 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Author: Manuel Requena <manuel.requena@cttc.es>
+ */
+
+//Import libraries
+#include "ns3/core-module.h"
+#include "ns3/network-module.h"
+#include "ns3/mobility-module.h"
+#include "ns3/lte-module.h"
+#include "ns3/config-store.h"
+#include <ns3/buildings-helper.h>
+//#include "ns3/gtk-config-store.h"
+
+#include "a2-a4-rsrq-handover-algorithm.h"
+#include "random-walk-2d-mobility-model.h"
+
+
+//Define namespace
+using namespace ns3;
+
+//Global variables
+static ns3::GlobalValue g_outdoorUeMinSpeed ("outdoorUeMinSpeed",
+                                             "Minimum speed value of UE with random waypoint model [m/s].",
+                                             ns3::DoubleValue (0.0),
+                                             ns3::MakeDoubleChecker<double> ());
+static ns3::GlobalValue g_outdoorUeMaxSpeed ("outdoorUeMaxSpeed",
+                                             "Maximum speed value of UE with random waypoint model [m/s].",
+                                             ns3::DoubleValue (0.0),
+                                             ns3::MakeDoubleChecker<double> ());
+
+//Arguments function
+int main (int argc, char *argv[])
+{
+  //Defaults if none given at runtime
+  Time simTime = MilliSeconds (1050);
+  bool useCa = false;
+  uint16_t numberOfUEs = 1;
+  uint16_t numberOfeNbs = 4;
+  
+  //these scenario parameters get their values from the global attributes defined above
+  GlobalValue::GetValueByName ("outdoorUeMinSpeed", doubleValue);
+  uint16_t outdoorUeMinSpeed = doubleValue.Get ();
+  GlobalValue::GetValueByName ("outdoorUeMaxSpeed", doubleValue);
+  uint16_t outdoorUeMaxSpeed = doubleValue.Get ();
+
+
+  //Command line arguments, overrides defaults if provided at runtime 
+  CommandLine cmd;
+  cmd.AddValue ("simTime", "Total duration of the simulation", simTime); // --simTime=*time*
+  cmd.AddValue ("useCa", "Whether to use carrier aggregation.", useCa); // --useCa=true
+  cmd.Parse (argc, argv);
+
+  // to save a template default attribute file run it like this:
+  // ./waf --command-template="%s --ns3::ConfigStore::Filename=input-defaults.txt --ns3::ConfigStore::Mode=Save --ns3::ConfigStore::FileFormat=RawText" --run src/lte/examples/lena-simple
+  //
+  // to load a previously created default attribute file
+  // ./waf --command-template="%s --ns3::ConfigStore::Filename=input-defaults.txt --ns3::ConfigStore::Mode=Load --ns3::ConfigStore::FileFormat=RawText" --run src/lte/examples/lena-simple
+
+  //Other default inputs can be gathered from a pre-existing text file and loaded into a future simulation.
+  ConfigStore inputConfig;
+  inputConfig.ConfigureDefaults ();
+
+  // Parse again so you can override default values from the command line
+  cmd.Parse (argc, argv);
+
+  //If user carrier aggregation is set to true via the command line...
+    //enable carrier aggregation
+    //set number of component carriers to 2
+    //split traffic equally among carriers
+  if (useCa)
+   {
+     Config::SetDefault ("ns3::LteHelper::UseCa", BooleanValue (useCa));
+     Config::SetDefault ("ns3::LteHelper::NumberOfComponentCarriers", UintegerValue (2));
+     Config::SetDefault ("ns3::LteHelper::EnbComponentCarrierManager", StringValue ("ns3::RrComponentCarrierManager"));
+   }
+
+  //Initialising the ltehelper function
+  Ptr<LteHelper> lteHelper = CreateObject<LteHelper> ();
+  
+  //EnB Handover
+  //Setting handover type to RSRQ
+  lteHelper->SetHandoverAlgorithmType ("ns3::A2A4RsrqHandoverAlgorithm");
+  
+  //If the RSRQ (power value) of the serving cell is worse than this threshold, neighbour cells are consider for handover
+  lteHelper->SetHandoverAlgorithmAttribute ("ServingCellThreshold",
+                                            UintegerValue (30));
+  //Minimum offset between the serving and the best neighbour cell to trigger the handover. 
+  lteHelper->SetHandoverAlgorithmAttribute ("NeighbourCellOffset",
+                                            UintegerValue (1));
+
+  // Uncomment to enable logging
+//  lteHelper->EnableLogComponents ();
+
+  // Create Nodes: eNodeB and UE
+  NodeContainer enbNodes;
+  NodeContainer ueNodes;
+  enbNodes.Create (numberOfeNbs);
+  ueNodes.Create (numberOfUEs);
+
+  // Install Mobility Model
+  MobilityHelper mobility;
+  //set non moving enb nodes  
+  Ptr<ListPositionAllocator> enbPositionAlloc = CreateObject<ListPositionAllocator> ();
+  	  //x, y, z coords
+	  enbPositionAlloc->Add (Vector (100, 0.0, 0.0));		// eNB1
+	  enbPositionAlloc->Add (Vector (200,  0.0, 0.0));		// eNB2
+	  enbPositionAlloc->Add (Vector (300, 0.0, 0.0));		// eNB3
+  MobilityHelper mobility;
+  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+  mobility.SetPositionAllocator (enbPositionAlloc);
+  mobility.Install (enbNodes);
+  BuildingsHelper::Install (enbNodes);
+  
+  //Set ue nodes movement
+  Ptr<ListPositionAllocator> uePositionAlloc = CreateObject<ListPositionAllocator> ();
+  	  //x, y, z coords
+	  uePositionAlloc->Add (Vector (100, 0.0, 0.0));		// ue1
+  mobility.SetMobilityModel ("ns3::SteadyStateRandomWaypointMobilityModel");
+  Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MaxSpeed", DoubleValue (outdoorUeMaxSpeed));
+  Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MinSpeed", DoubleValue (outdoorUeMinSpeed));
+  mobility.SetPositionAllocator (uePositionAlloc);
+  mobility.Install (ueNodes);
+  BuildingsHelper::Install (ueNodes);
+  
+  // Create Devices and install them in the Nodes (eNB and UE)
+  NetDeviceContainer enbDevs;
+  NetDeviceContainer ueDevs;
+  // Default scheduler is PF (proportionally fair), uncomment to use RR (round robin)
+  //lteHelper->SetSchedulerType ("ns3::RrFfMacScheduler");
+
+  enbDevs = lteHelper->InstallEnbDevice (enbNodes);
+  ueDevs = lteHelper->InstallUeDevice (ueNodes);
+
+  // Attach a UE to a eNB
+  lteHelper->AttachToClosestEnb (ueDevs, enbDevs);
+
+  //Whenever a user equipment is being provided with any service,
+  //the service has to be associated with a Radio Bearer specifying
+  //the configuration for Layer-2 and Physical Layer in order to have
+  //its QoS clearly defined.
+
+  // Activate a data radio bearer
+  enum EpsBearer::Qci q = EpsBearer::GBR_CONV_VOICE;
+  EpsBearer bearer (q);
+  lteHelper->ActivateDataRadioBearer (ueDevs, bearer);
+  lteHelper->EnableTraces ();
+
+  Simulator::Stop (simTime);
+  Simulator::Run ();
+
+  // GtkConfigStore config;
+  // config.ConfigureAttributes ();
+
+  Simulator::Destroy ();
+  return 0;
+}
