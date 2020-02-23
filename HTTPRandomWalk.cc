@@ -26,6 +26,9 @@
 #include "ns3/config-store.h"
 #include <ns3/buildings-helper.h>
 #include "ns3/internet-stack-helper.h"
+#include "ns3/point-to-point-helper.h"
+#include "ns3/three-gpp-http-helper.h"
+#include "ns3/applications-module.h"
 //#include "ns3/gtk-config-store.h"
 
 //Define namespace
@@ -35,7 +38,7 @@ using namespace ns3;
 int main (int argc, char *argv[])
 {
   //Defaults if none given at runtime
-  Time simTime = Minutes (60);
+  double simTime = 300.0;
   bool useCa = false;
 
   //Command line arguments, overrides defaults if given
@@ -93,52 +96,8 @@ int main (int argc, char *argv[])
     "Time", StringValue ("2s"), //change current direction and speed after this delay
     "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"), //speed of walk
     "Bounds", RectangleValue (Rectangle (0.0, 20.0, 0.0, 20.0)));
-  mobility.Install (clientServerNodes);
+  mobility.Install (clientServerNodes.Get(0));
   BuildingsHelper::Install (clientServerNodes.Get(0));
-
-  //Create P2P link
-  PointToPointHelper pointToPoint;
-  //Set P2P attributes
-  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
-  pointToPoint.SetChannelAttribute ("Delay", StringValue ("2ms"));
-  //install on client/server nodes
-  NetDeviceContainer clientServerDevs;
-  clientServerDevs = pointToPoint.Install (clientServerNodes);
-
-  //Use the internet stack helper and install on the ue nodes
-  InternetStackHelper internet;
-  internet.Install (clientServerNodes);
-
-  //Set base IPv4 addresses
-  Ipv4AddressHelper address;
-  address.SetBase ("10.1.1.0", "255.255.255.0");
-  //assign these addresses to the client/server devices
-  Ipv4InterfaceContainer interfaces = address.Assign (clientServerDevs);
-  Ipv4Address serverAddress = interfaces.GetAddress (1);
-
-  // Create HTTP server helper
-  ThreeGppHttpServerHelper serverHelper (serverAddress);
-
-  // Install HTTP server
-  ApplicationContainer serverApps = serverHelper.Install (clientServerNodes.Get (1));
-  Ptr<ThreeGppHttpServer> httpServer = serverApps.Get (0)->GetObject<ThreeGppHttpServer> ();
-
-  // Setup HTTP variables for the server
-  PointerValue varPtr;
-  httpServer->GetAttribute ("Variables", varPtr);
-  Ptr<ThreeGppHttpVariables> httpVariables = varPtr.Get<ThreeGppHttpVariables> ();
-  httpVariables->SetMainObjectSizeMean (102400); // 100kB - mean of the main object sizes in bytes
-  httpVariables->SetMainObjectSizeStdDev (40960); // 40kB - standard deviation of main object sizes in bytes
-
-  // Create HTTP client helper
-  ThreeGppHttpClientHelper clientHelper (serverAddress);
-
-  // Install HTTP client
-  ApplicationContainer clientApps = clientHelper.Install (clientServerNodes.Get (0));
-  Ptr<ThreeGppHttpClient> httpClient = clientApps.Get (0)->GetObject<ThreeGppHttpClient> ();
-
-  // Stop browsing after specified simulation time
-  clientApps.Stop (Seconds (simTime));
 
   // Create Devices and install them in the Nodes (eNB and UE)
   NetDeviceContainer enbDevs;
@@ -147,13 +106,11 @@ int main (int argc, char *argv[])
   //lteHelper->SetSchedulerType ("ns3::RrFfMacScheduler");
 
   enbDevs = lteHelper->InstallEnbDevice (enbNodes);
-  ueDevs = lteHelper->InstallUeDevice (clientServerNodes);
+  ueDevs = lteHelper->InstallUeDevice (clientServerNodes.Get (0));
 
   // Attach a UE to a eNB
   lteHelper->Attach (ueDevs, enbDevs.Get (0));
 
-
-  
   //Whenever a user equipment is being provided with any service,
   //the service has to be associated with a Radio Bearer specifying
   //the configuration for Layer-2 and Physical Layer in order to have
@@ -165,7 +122,48 @@ int main (int argc, char *argv[])
   lteHelper->ActivateDataRadioBearer (ueDevs, bearer);
   lteHelper->EnableTraces ();
 
-  Simulator::Stop (simTime);
+   //Create P2P link
+   PointToPointHelper pointToPoint;
+   //Set P2P attributes
+   pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
+   pointToPoint.SetChannelAttribute ("Delay", StringValue ("2ms"));
+   //install on client/server nodes
+   NetDeviceContainer clientServerDevs;
+   clientServerDevs = pointToPoint.Install (clientServerNodes);
+  
+   //Use the internet stack helper and install on the ue nodes
+   InternetStackHelper internet;
+   internet.Install (clientServerNodes);
+  
+   //Set base IPv4 addresses
+   Ipv4AddressHelper address;
+   address.SetBase ("10.1.1.0", "255.255.255.0");
+   //assign these addresses to the client/server devices
+   Ipv4InterfaceContainer interfaces = address.Assign (clientServerDevs);
+   Ipv4Address serverAddress = interfaces.GetAddress (1);
+  
+   // Create HTTP server helper
+   ThreeGppHttpServerHelper serverHelper (serverAddress);
+  
+   // Install HTTP server
+   ApplicationContainer serverApps = serverHelper.Install (clientServerNodes.Get (1));
+   Ptr<ThreeGppHttpServer> httpServer = serverApps.Get (0)->GetObject<ThreeGppHttpServer> ();
+  
+   // Setup HTTP variables for the server
+   PointerValue varPtr;
+   httpServer->GetAttribute ("Variables", varPtr);
+   Ptr<ThreeGppHttpVariables> httpVariables = varPtr.Get<ThreeGppHttpVariables> ();
+   httpVariables->SetMainObjectSizeMean (102400); // 100kB - mean of the main object sizes in bytes
+   httpVariables->SetMainObjectSizeStdDev (40960); // 40kB - standard deviation of main object sizes in bytes
+  
+   // Create HTTP client helper
+   ThreeGppHttpClientHelper clientHelper (serverAddress);
+  
+   // Install HTTP client
+   ApplicationContainer clientApps = clientHelper.Install (clientServerNodes.Get (0));
+   Ptr<ThreeGppHttpClient> httpClient = clientApps.Get (0)->GetObject<ThreeGppHttpClient> ();
+
+  Simulator::Stop (Seconds (simTime));
   Simulator::Run ();
 
   // GtkConfigStore config;
