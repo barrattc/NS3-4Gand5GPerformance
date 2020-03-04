@@ -15,7 +15,11 @@ The NS3 Energy Model will be utilised to retrieve the power consumption of the u
 Prequisites: You will need to have NS-3 installed (I am running version 3.30).
 
 You must copy the .cc files from this project to the 'Scratch' directory.
-1. Files are run from the 'ns-3-dev' folder with the use of the './waf --run' command, example below
+1. Files are run from the 'ns-3-dev' folder with the use of the'./waf --run' command, example below
+
       ./waf --run scratch/HTTPRandomWalk //Note that the file extension is not included
+
 2. Command line options can be inputted at runtime and will overwrite the default options set in each file, example below
+
       ./waf --run 'scratch/HTTPRandomWalk --simTime=500' //This will run the file for 500 seconds instead of the default time set in the file.
+      
