@@ -1,8 +1,9 @@
-**NS3-4Gand5GEnergyComparison**
+# NS3-4Gand5GEnergyComparison
 
 This is my final year project for my Computing (BSc) degree at the University of Portsmouth.
 
 **Description and Purpose**
+
 This project aims to compare the energy efficiency of 4G and 5G cellular technologies using various case studies. The case studies will emulate everyday uses of LTE with mobile phones e.g. walking around whilst opening multiple HTTP/S web pages.
 
 The purpose of this project is to determine if the claim that 5G will be more energ efficient than 4G for mobile devices is true and to what extent.
@@ -10,6 +11,7 @@ The purpose of this project is to determine if the claim that 5G will be more en
 The NS3 Energy Model will be utilised to retrieve the power consumption of the ue (mobile phones) and the Mobility Model will be used to simulate the movement.
 
 **How to Run**
+
 Prequisites: You will need to have NS-3 installed (I am running version 3.30).
 
 You must copy the .cc files from this project to the 'Scratch' directory.
