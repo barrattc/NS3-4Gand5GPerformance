@@ -31,6 +31,8 @@
 #include "ns3/energy-module.h"
 #include "ns3/flow-monitor-helper.h"
 #include "ns3/ipv4-flow-classifier.h"
+#include "ns3/voip-client-server-helper.h"
+#include "ns3/ipv4-address.h"
 //#include "ns3/gtk-config-store.h"
 
 //Define namespace
@@ -50,7 +52,7 @@ using namespace ns3;
 //        }
 //}
 
-NS_LOG_COMPONENT_DEFINE ("UDPRandomWalk");
+NS_LOG_COMPONENT_DEFINE ("VoIPRandomWalk");
 
 //Checking for lost packets as part of the Flow Monitor
  void
@@ -97,7 +99,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("useV6", "Whether to use IPv6 or not.", useV6);
   cmd.Parse (argc, argv);
  
-  LogComponentEnable ("UDPRandomWalk", LOG_INFO);
+  LogComponentEnable ("VoIPRandomWalk", LOG_INFO);
 
   //Other default inputs can be gathered from a pre-existing text file and loaded into a future simulation.
   ConfigStore inputConfig;
@@ -133,7 +135,18 @@ int main (int argc, char *argv[])
   mobility.Install (enbNodes);
   BuildingsHelper::Install (enbNodes);
     //set randomly walking ue nodes
-  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+  mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
+    "MinX", DoubleValue (1.0),
+    "MinY", DoubleValue (1.0),
+    "DeltaX", DoubleValue (5.0),
+    "DeltaY", DoubleValue (5.0),
+    "GridWidth", UintegerValue (3),
+    "LayoutType", StringValue ("RowFirst"));
+  mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
+    "Mode", StringValue ("Time"), //time or distance mode
+    "Time", StringValue ("2s"), //change current direction and speed after this delay
+    "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"), //speed of walk
+    "Bounds", RectangleValue (Rectangle (0.0, 20.0, 0.0, 20.0)));
   mobility.Install (clientServerNodes.Get(0));
   BuildingsHelper::Install (clientServerNodes.Get(0));
 
@@ -173,37 +186,53 @@ int main (int argc, char *argv[])
   internet.Install (clientServerNodes);
   
   //Assigning IP addresses
-  if (useV6 == false)
-    {
+//  if (useV6 == false)
+//    {
       Ipv4AddressHelper ipv4;
       ipv4.SetBase ("10.1.1.0", "255.255.255.0");
       Ipv4InterfaceContainer i = ipv4.Assign (clientServerDevs);
-      serverAddress = Address (i.GetAddress (1));
-    }
-  else
-    {
-      Ipv6AddressHelper ipv6;
-      ipv6.SetBase ("2001:0000:f00d:cafe::", Ipv6Prefix (64));
-      Ipv6InterfaceContainer i6 = ipv6.Assign (clientServerDevs);
-      serverAddress = Address(i6.GetAddress (1,1));
-    }
-  
+//      serverAddress = Address (i.GetAddress (1));
+//    }
+//  else
+//    {
+//      Ipv6AddressHelper ipv6;
+//      ipv6.SetBase ("2001:0000:f00d:cafe::", Ipv6Prefix (64));
+//      Ipv6InterfaceContainer i6 = ipv6.Assign (clientServerDevs);
+//      serverAddress = Address(i6.GetAddress (1,1));
+//    }
+
   // Create a UDP Server on the receiver
   uint16_t port = 50000;
-  UdpServerHelper server (port);
-  ApplicationContainer apps = server.Install (clientServerNodes.Get(1));
+//  uint32_t MaxPacketSize = 1024;
+  Time interPacketInterval = Seconds (0.05);
+//  uint32_t maxPacketCount = 320;
+  VoipServerHelper voipServer (port);
+//  voipServer.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
+  voipServer.SetAttribute ("Interval", TimeValue (interPacketInterval));
+//  voipServer.SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
+  ApplicationContainer apps = voipServer.Install (clientServerNodes.Get(1));
   apps.Start (Seconds (1.0));
-  
+//  apps.Add (voipServer.Install (clientServerNodes.Get(1)));
+
+//  UdpServerHelper server (port);
+// ApplicationContainer apps = server.Install (clientServerNodes.Get(1));
+//  apps.Start (Seconds (1.0));
+
  // Create one UdpClient application to send UDP datagrams from node zero to node one.
-   uint32_t MaxPacketSize = 1024;
-   Time interPacketInterval = Seconds (0.05);
-   uint32_t maxPacketCount = 320;
-   UdpClientHelper client (serverAddress, port);
-   client.SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
-   client.SetAttribute ("Interval", TimeValue (interPacketInterval));
-   client.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
-   apps = client.Install (clientServerNodes.Get (0));
-   apps.Start (Seconds (2.0));
+  VoipClientHelper voipClient (i.GetAddress(1), port);
+  apps = voipClient.Install (clientServerNodes.Get(0)); 
+  apps.Start (Seconds (2.0));
+//  apps.Add (voipClient.Install (clientServerNodes.Get(1)));
+
+//   uint32_t MaxPacketSize = 1024;
+//   Time interPacketInterval = Seconds (0.05);
+//   uint32_t maxPacketCount = 320;
+//   UdpClientHelper client (serverAddress, port);
+//   client.SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
+//   client.SetAttribute ("Interval", TimeValue (interPacketInterval));
+//   client.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
+//   apps = client.Install (clientServerNodes.Get (0));
+//   apps.Start (Seconds (2.0));
 
 /*
    // energy source //
@@ -252,8 +281,8 @@ lteHelper->EnableTraces (); //creates Dl* and Ul* files
 
 //P2P tracing
 AsciiTraceHelper ascii;
-pointToPoint.EnableAsciiAll (ascii.CreateFileStream ("ASCIIUDPRandomWalk.tr")); //ascii
-pointToPoint.EnablePcapAll ("PCAPUDPRandomWalk"); //pcap
+pointToPoint.EnableAsciiAll (ascii.CreateFileStream ("ASCIIVoIPRandomWalk.tr")); //ascii
+pointToPoint.EnablePcapAll ("PCAPVoIPRandomWalk"); //pcap
 
 
 // Flow monitor
@@ -290,7 +319,7 @@ std::cout << " Lost Packets: " << i->second.lostPackets << "\n";
 }
 
 //Flow monitor file generation
-flowMonitor->SerializeToXmlFile("FlowMonitorUDPRandomWalk.xml", true, true); //histograms and probes enabled
+flowMonitor->SerializeToXmlFile("FlowMonitorVoIPRandomWalk.xml", true, true); //histograms and probes enabled
 
 
   // GtkConfigStore config;
