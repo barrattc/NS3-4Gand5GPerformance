@@ -36,12 +36,10 @@
 #include "ns3/energy-module.h"
 #include "ns3/flow-monitor-helper.h"
 #include "ns3/ipv4-flow-classifier.h"
-#include "ns3/voip-client-server-helper.h"
-#include "ns3/ipv4-address.h"
 #include "ns3/mmwave-helper.h"
 //#include "ns3/gtk-config-store.h"
 
-//Define namespaces
+//Define namespace
 using namespace ns3;
 using namespace mmwave;
 
@@ -59,7 +57,7 @@ using namespace mmwave;
 //        }
 //}
 
-NS_LOG_COMPONENT_DEFINE ("mmWaveVoIPNoWalk");
+NS_LOG_COMPONENT_DEFINE ("mmwaveTCPRandomWalk");
 
 //Checking for lost packets as part of the Flow Monitor
  void
@@ -93,14 +91,11 @@ NS_LOG_COMPONENT_DEFINE ("mmWaveVoIPNoWalk");
 int main (int argc, char *argv[])
 {
   //Defaults if none given at runtime
-  double simTime = 5.0;
+  double simTime = 30.0;
   bool useCa = false;
   bool useV6 = false;
  
   Address serverAddress;
-
-  Config::SetDefault ("ns3::MmWavePhyMacCommon::ResourceBlockNum", UintegerValue (1));
-  Config::SetDefault ("ns3::MmWavePhyMacCommon::ChunkPerRB", UintegerValue (72));
 
   //Command line arguments, overrides defaults if given
   CommandLine cmd;
@@ -109,7 +104,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("useV6", "Whether to use IPv6 or not.", useV6);
   cmd.Parse (argc, argv);
  
-  LogComponentEnable ("mmWaveVoIPNoWalk", LOG_INFO);
+  LogComponentEnable ("mmwaveTCPRandomWalk", LOG_INFO);
 
   //Other default inputs can be gathered from a pre-existing text file and loaded into a future simulation.
   ConfigStore inputConfig;
@@ -118,15 +113,15 @@ int main (int argc, char *argv[])
   // Parse again so you can override default values from the command line
   cmd.Parse (argc, argv);
 
-  //If user carrier aggregation is set to true via the command line... 
-  if (useCa)
+  //If user carrier aggregation is set to true via the command line...
+ if (useCa)
     {
       Config::SetDefault ("ns3::MmWaveHelper::UseCa",BooleanValue (useCa));
       Config::SetDefault ("ns3::MmWaveHelper::NumberOfComponentCarriers",UintegerValue (2));
       Config::SetDefault ("ns3::MmWaveHelper::EnbComponentCarrierManager",StringValue ("ns3::MmWaveRrComponentCarrierManager"));
     }
 
-//Creating the mmwavehelper object
+  //Creating the mmwavehelper object
   Ptr<MmWaveHelper> ptr_mmWave = CreateObject<MmWaveHelper> ();
 
   //and then initialising it
@@ -144,17 +139,27 @@ int main (int argc, char *argv[])
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   mobility.Install (enbNodes);
   BuildingsHelper::Install (enbNodes);
-    //set non walking ue nodes
-  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+    //set randomly walking ue nodes
+  mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
+    "MinX", DoubleValue (1.0),
+    "MinY", DoubleValue (1.0),
+    "DeltaX", DoubleValue (5.0),
+    "DeltaY", DoubleValue (5.0),
+    "GridWidth", UintegerValue (3),
+    "LayoutType", StringValue ("RowFirst"));
+  mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
+    "Mode", StringValue ("Time"), //time or distance mode
+    "Time", StringValue ("2s"), //change current direction and speed after this delay
+    "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"), //random number generator for speed of walk
+    "Bounds", RectangleValue (Rectangle (0.0, 20.0, 0.0, 20.0)));
   mobility.Install (clientServerNodes.Get(0));
   BuildingsHelper::Install (clientServerNodes.Get(0));
 
-  // Create Devices and install them in the Nodes (eNB and UE)
+ // Create Devices and install them in the Nodes (eNB and UE)
   NetDeviceContainer enbDevs = ptr_mmWave->InstallEnbDevice (enbNodes);
   NetDeviceContainer ueDevs= ptr_mmWave->InstallUeDevice (clientServerNodes.Get (0));
 
   //Attach ue to enb
-  //ptr_mmWave->AttachToClosestEnb (eanbDevs, ueDevs);
   ptr_mmWave->AttachToClosestEnb (ueDevs, enbDevs.Get (0));
 
   //Whenever a user equipment is being provided with any service,
@@ -181,53 +186,45 @@ int main (int argc, char *argv[])
   internet.Install (clientServerNodes);
   
   //Assigning IP addresses
-  //  if (useV6 == false)
-  //    {
+//  if (useV6 == false)
+  //  {
   Ipv4AddressHelper ipv4;
   ipv4.SetBase ("10.1.1.0", "255.255.255.0");
   Ipv4InterfaceContainer i = ipv4.Assign (clientServerDevs);
-  //      serverAddress = Address (i.GetAddress (1));
-  //    }
-  //  else
-  //    {
-  //      Ipv6AddressHelper ipv6;
-  //      ipv6.SetBase ("2001:0000:f00d:cafe::", Ipv6Prefix (64));
-  //      Ipv6InterfaceContainer i6 = ipv6.Assign (clientServerDevs);
-  //      serverAddress = Address(i6.GetAddress (1,1));
-  //    }
-
-  // Create a UDP Server on the receiver
+//  serverAddress = Address (i.GetAddress (1));
+   // }
+ /* else
+    {
+      Ipv6AddressHelper ipv6;
+      ipv6.SetBase ("2001:0000:f00d:cafe::", Ipv6Prefix (64));
+      Ipv6InterfaceContainer i6 = ipv6.Assign (clientServerDevs);
+      serverAddress = Address(i6.GetAddress (1,1));
+    }
+*/
+  
+  // Create a TCP Server on the receiver
   uint16_t port = 50000;
-  //  uint32_t MaxPacketSize = 1024;
-  Time interPacketInterval = Seconds (0.05);
-  //  uint32_t maxPacketCount = 320;
-  VoipServerHelper voipServer (port);
-  //  voipServer.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
-  voipServer.SetAttribute ("Interval", TimeValue (interPacketInterval));
-  //  voipServer.SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
-  ApplicationContainer apps = voipServer.Install (clientServerNodes.Get(1));
-  apps.Start (Seconds (1.0));
-  //  apps.Add (voipServer.Install (clientServerNodes.Get(1)));
+  // Create a packet sink to receive packets from OnOff application
+  Address sinkAddress (InetSocketAddress (i.GetAddress (1), port));
+  PacketSinkHelper sinkHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), port));
+  ApplicationContainer sinkApp = sinkHelper.Install (clientServerNodes.Get(1));
+  sinkApp.Start (Seconds (1.0));
 
-//  UdpServerHelper server (port);
-// ApplicationContainer apps = server.Install (clientServerNodes.Get(1));
-//  apps.Start (Seconds (1.0));
-
- // Create one UdpClient application to send UDP datagrams from node zero to node one.
-  VoipClientHelper voipClient (i.GetAddress(1), port);
-  apps = voipClient.Install (clientServerNodes.Get(0)); 
-  apps.Start (Seconds (2.0));
-//  apps.Add (voipClient.Install (clientServerNodes.Get(1)));
-
-//   uint32_t MaxPacketSize = 1024;
+  // Create the OnOff applications to send TCP packets to the server
+   uint32_t MaxPacketSize = 1024;
 //   Time interPacketInterval = Seconds (0.05);
 //   uint32_t maxPacketCount = 320;
-//   UdpClientHelper client (serverAddress, port);
+   OnOffHelper client ("ns3::TcpSocketFactory", sinkAddress);
 //   client.SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
 //   client.SetAttribute ("Interval", TimeValue (interPacketInterval));
-//   client.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
-//   apps = client.Install (clientServerNodes.Get (0));
-//   apps.Start (Seconds (2.0));
+   client.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+   client.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+   client.SetAttribute ("DataRate", DataRateValue (DataRate ("10Mbps")));
+   client.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
+   client.SetAttribute ("MaxBytes", UintegerValue (10000));
+   ApplicationContainer clientApp = client.Install (clientServerNodes.Get (0));
+   clientApp.Start (Seconds (2.0));
+
 
 /*
    // energy source //
@@ -276,8 +273,9 @@ ptr_mmWave->EnableTraces (); //creates Dl* and Ul* files
 
 //P2P tracing
 AsciiTraceHelper ascii;
-pointToPoint.EnableAsciiAll (ascii.CreateFileStream ("ASCIImmwaveVoIPNoWalk.tr")); //ascii
-pointToPoint.EnablePcapAll ("PCAPmmwaveVoIPNoWalk"); //pcap
+pointToPoint.EnableAsciiAll (ascii.CreateFileStream ("ASCIImmwaveTCPRandomWalk.tr")); //ascii
+pointToPoint.EnablePcapAll ("PCAPmmwaveTCPRandomWalk"); //pcap
+
 
 // Flow monitor
 Ptr<FlowMonitor> flowMonitor;
@@ -288,29 +286,35 @@ flowMonitor->SetAttribute("DelayBinWidth", DoubleValue(0.001));
 flowMonitor->SetAttribute("JitterBinWidth", DoubleValue(0.001));
 flowMonitor->SetAttribute("PacketSizeBinWidth", DoubleValue(20));
 
+
 //Running and Stopping simulation
-Simulator::Stop (Seconds (simTime));
-Simulator::Run ();
+  //Simulator::Stop (Seconds (simTime));
+  Simulator::Stop (Seconds (simTime));
+  Simulator::Run ();
 
 //Callback to class, checks for packets that appear to be lost
 flowMonitor->CheckForLostPackets();
 
 //Only show flow, transferred bytes, received bytes and throughput
 Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowHelper.GetClassifier ());
-std::map<FlowId, FlowMonitor::FlowStats> stats = flowMonitor->GetFlowStats ();
+
+FlowMonitor::FlowStatsContainer stats = flowMonitor->GetFlowStats ();
+
+//std::map<FlowId, FlowMonitor::FlowStats> stats = flowMonitor->GetFlowStats ();
 for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin (); i != stats.end (); ++i)
 {
-Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
-std::cout << "Flow " << i->first << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n";
-std::cout << " Tx Bytes: " << i->second.txBytes << "\n";
-std::cout << " Rx Bytes: " << i->second.rxBytes << "\n";
-std::cout << " Throughput: " << i->second.rxBytes * 8.0 / (i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds())/1024/1024 << " Mbps\n";
-std::cout << " Delay: " << i->second.delaySum << "\n";
-std::cout << " Lost Packets: " << i->second.lostPackets << "\n";
+	Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
+	std::cout << "Flow " << i->first << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n";
+	std::cout << " Tx Bytes: " << i->second.txBytes << "\n";
+	std::cout << " Rx Bytes: " << i->second.rxBytes << "\n";
+	std::cout << " Throughput: " << i->second.rxBytes * 8.0 / (i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds())/1024/1024 << " Mbps\n";
+	std::cout << " Delay: " << i->second.delaySum << "\n";
+	std::cout << " Lost Packets: " << i->second.lostPackets << "\n";
 }
 
 //Flow monitor file generation
-flowMonitor->SerializeToXmlFile("FlowMonitormmwaveVoIPNoWalk.xml", true, true); //histograms and probes enabled
+flowMonitor->SerializeToXmlFile("FlowMonitormmwaveTCPRandomWalk.xml", true, true); //histograms and probes enabled
+
 
   // GtkConfigStore config;
   // config.ConfigureAttributes ();
@@ -318,3 +322,4 @@ flowMonitor->SerializeToXmlFile("FlowMonitormmwaveVoIPNoWalk.xml", true, true); 
   Simulator::Destroy ();
   return 0;
 }
+
