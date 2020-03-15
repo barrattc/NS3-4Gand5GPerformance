@@ -371,6 +371,8 @@ std::cout << "Flow " << i->first << " (" << t.sourceAddress << " -> " << t.desti
 std::cout << " Tx Bytes: " << i->second.txBytes << "\n";
 std::cout << " Rx Bytes: " << i->second.rxBytes << "\n";
 std::cout << " Throughput: " << i->second.rxBytes * 8.0 / (i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds())/1024/1024 << " Mbps\n";
+std::cout << " Delay: " << i->second.delaySum << "\n";
+std::cout << " Lost Packets: " << i->second.lostPackets << "\n";
 }
 
 //Flow monitor file generation
