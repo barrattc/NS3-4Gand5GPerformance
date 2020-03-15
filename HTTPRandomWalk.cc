@@ -51,7 +51,7 @@ using namespace ns3;
 //        }
 //}
 
- NS_LOG_COMPONENT_DEFINE ("ThreeGppHttpExample");
+ NS_LOG_COMPONENT_DEFINE ("HTTPRandomWalk");
  
  void
  ServerConnectionEstablished (Ptr<const ThreeGppHttpServer>, Ptr<Socket>)
@@ -164,7 +164,7 @@ int main (int argc, char *argv[])
    LogComponentEnableAll (LOG_PREFIX_TIME);
    //LogComponentEnableAll (LOG_PREFIX_FUNC);
    //LogComponentEnable ("ThreeGppHttpClient", LOG_INFO);
-   LogComponentEnable ("ThreeGppHttpExample", LOG_INFO);
+   LogComponentEnable ("HTTPRandomWalk", LOG_INFO);
 
   //Other default inputs can be gathered from a pre-existing text file and loaded into a future simulation.
   ConfigStore inputConfig;
@@ -371,6 +371,8 @@ std::cout << "Flow " << i->first << " (" << t.sourceAddress << " -> " << t.desti
 std::cout << " Tx Bytes: " << i->second.txBytes << "\n";
 std::cout << " Rx Bytes: " << i->second.rxBytes << "\n";
 std::cout << " Throughput: " << i->second.rxBytes * 8.0 / (i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds())/1024/1024 << " Mbps\n";
+std::cout << " Delay: " << i->second.delaySum << "\n";
+std::cout << " Lost Packets: " << i->second.lostPackets << "\n";
 }
 
 //Flow monitor file generation
