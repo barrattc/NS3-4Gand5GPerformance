@@ -59,7 +59,7 @@ using namespace mmwave;
 //        }
 //}
 
-NS_LOG_COMPONENT_DEFINE ("mmWaveVoIPRandomWalk");
+NS_LOG_COMPONENT_DEFINE ("mmWaveVoIPNoWalk");
 
 //Checking for lost packets as part of the Flow Monitor
  void
@@ -109,7 +109,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("useV6", "Whether to use IPv6 or not.", useV6);
   cmd.Parse (argc, argv);
  
-  LogComponentEnable ("mmWaveVoIPRandomWalk", LOG_INFO);
+  LogComponentEnable ("mmWaveVoIPNoWalk", LOG_INFO);
 
   //Other default inputs can be gathered from a pre-existing text file and loaded into a future simulation.
   ConfigStore inputConfig;
@@ -276,8 +276,8 @@ ptr_mmWave->EnableTraces (); //creates Dl* and Ul* files
 
 //P2P tracing
 AsciiTraceHelper ascii;
-pointToPoint.EnableAsciiAll (ascii.CreateFileStream ("ASCIImmwaveVoIPRandomWalk.tr")); //ascii
-pointToPoint.EnablePcapAll ("PCAPmmwaveVoIPRandomWalk"); //pcap
+pointToPoint.EnableAsciiAll (ascii.CreateFileStream ("ASCIImmwaveVoIPNoWalk.tr")); //ascii
+pointToPoint.EnablePcapAll ("PCAPmmwaveVoIPNoWalk"); //pcap
 
 // Flow monitor
 Ptr<FlowMonitor> flowMonitor;
@@ -310,7 +310,7 @@ std::cout << " Lost Packets: " << i->second.lostPackets << "\n";
 }
 
 //Flow monitor file generation
-flowMonitor->SerializeToXmlFile("FlowMonitormmwaveVoIPRandomWalk.xml", true, true); //histograms and probes enabled
+flowMonitor->SerializeToXmlFile("FlowMonitormmwaveVoIPNoWalk.xml", true, true); //histograms and probes enabled
 
   // GtkConfigStore config;
   // config.ConfigureAttributes ();
