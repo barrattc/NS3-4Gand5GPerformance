@@ -15,7 +15,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Manuel Requena <manuel.requena@cttc.es>
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ *   Author: Marco Miozzo <marco.miozzo@cttc.es>
+ *           Nicola Baldo  <nbaldo@cttc.es>
+ *
+ *   Modified by: Marco Mezzavilla < mezzavilla@nyu.edu>
+ *                         Sourjya Dutta <sdutta@nyu.edu>
+ *                         Russell Ford <russell.ford@nyu.edu>
+ *                         Menglei Zhang <menglei@nyu.edu>
  */
 
 //Import libraries
@@ -27,16 +37,17 @@
 #include <ns3/buildings-helper.h>
 #include "ns3/internet-stack-helper.h"
 #include "ns3/point-to-point-helper.h"
+#include "ns3/three-gpp-http-helper.h"
 #include "ns3/applications-module.h"
 #include "ns3/energy-module.h"
 #include "ns3/flow-monitor-helper.h"
 #include "ns3/ipv4-flow-classifier.h"
-#include "ns3/voip-client-server-helper.h"
-#include "ns3/ipv4-address.h"
+#include "ns3/mmwave-helper.h"
 //#include "ns3/gtk-config-store.h"
 
 //Define namespace
 using namespace ns3;
+using namespace mmwave;
 
 //Print remaining energy function
 //static void PrintCellInfo (liIonSourceHelper)
@@ -52,7 +63,74 @@ using namespace ns3;
 //        }
 //}
 
-NS_LOG_COMPONENT_DEFINE ("VoIPRandomWalk");
+ NS_LOG_COMPONENT_DEFINE ("mmwaveHTTPRandomWalk");
+ 
+ void
+ ServerConnectionEstablished (Ptr<const ThreeGppHttpServer>, Ptr<Socket>)
+ {
+   NS_LOG_INFO ("Client has established a connection to the server.");
+ }
+ 
+ void
+ MainObjectGenerated (uint32_t size)
+ {
+   NS_LOG_INFO ("Server generated a main object of " << size << " bytes.");
+ }
+ 
+ void
+ EmbeddedObjectGenerated (uint32_t size)
+ {
+   NS_LOG_INFO ("Server generated an embedded object of " << size << " bytes.");
+ }
+ 
+ void
+ ServerTx (Ptr<const Packet> packet)
+ {
+   NS_LOG_INFO ("Server sent a packet of " << packet->GetSize () << " bytes.");
+ }
+
+ void
+ ClientRx (Ptr<const Packet> packet, const Address &address)
+ {
+   NS_LOG_INFO ("Client received a packet of " << packet->GetSize () << " bytes from " << address);
+ }
+
+ void
+ ClientMainObjectReceived (Ptr<const ThreeGppHttpClient>, Ptr<const Packet> packet)
+ {
+   Ptr<Packet> p = packet->Copy ();
+   ThreeGppHttpHeader header;
+   p->RemoveHeader (header);
+   if (header.GetContentLength () == p->GetSize ()
+       && header.GetContentType () == ThreeGppHttpHeader::MAIN_OBJECT)
+     {
+       NS_LOG_INFO ("Client has successfully received a main object of "
+                    << p->GetSize () << " bytes.");
+     }
+   else
+     {
+       NS_LOG_INFO ("Client failed to parse a main object. ");
+     }
+ }
+
+
+ void
+ ClientEmbeddedObjectReceived (Ptr<const ThreeGppHttpClient>, Ptr<const Packet> packet)
+ {
+   Ptr<Packet> p = packet->Copy ();
+   ThreeGppHttpHeader header;
+   p->RemoveHeader (header);
+   if (header.GetContentLength () == p->GetSize ()
+       && header.GetContentType () == ThreeGppHttpHeader::EMBEDDED_OBJECT)
+     {
+       NS_LOG_INFO ("Client has successfully received an embedded object of "
+                    << p->GetSize () << " bytes.");
+     }
+   else
+     {
+       NS_LOG_INFO ("Client failed to parse an embedded object. ");
+     }
+ }
 
 //Checking for lost packets as part of the Flow Monitor
  void
@@ -81,25 +159,27 @@ NS_LOG_COMPONENT_DEFINE ("VoIPRandomWalk");
      }
  }
 
-
 //Main function
 int main (int argc, char *argv[])
 {
   //Defaults if none given at runtime
   double simTime = 10.0;
   bool useCa = false;
-  bool useV6 = false;
- 
-  Address serverAddress;
+
+  Config::SetDefault ("ns3::MmWavePhyMacCommon::ResourceBlockNum", UintegerValue (1));
+  Config::SetDefault ("ns3::MmWavePhyMacCommon::ChunkPerRB", UintegerValue (72));
 
   //Command line arguments, overrides defaults if given
   CommandLine cmd;
   cmd.AddValue ("simTime", "Total duration of the simulation", simTime);
   cmd.AddValue ("useCa", "Whether to use carrier aggregation.", useCa);
-  cmd.AddValue ("useV6", "Whether to use IPv6 or not.", useV6);
   cmd.Parse (argc, argv);
- 
-  LogComponentEnable ("VoIPRandomWalk", LOG_INFO);
+
+   Time::SetResolution (Time::NS);
+   LogComponentEnableAll (LOG_PREFIX_TIME);
+   //LogComponentEnableAll (LOG_PREFIX_FUNC);
+   //LogComponentEnable ("ThreeGppHttpClient", LOG_INFO);
+   LogComponentEnable ("mmwaveHTTPRandomWalk", LOG_INFO);
 
   //Other default inputs can be gathered from a pre-existing text file and loaded into a future simulation.
   ConfigStore inputConfig;
@@ -110,14 +190,17 @@ int main (int argc, char *argv[])
 
   //If user carrier aggregation is set to true via the command line...
   if (useCa)
-   {
-     Config::SetDefault ("ns3::LteHelper::UseCa", BooleanValue (useCa)); //enable carrier aggregation
-     Config::SetDefault ("ns3::LteHelper::NumberOfComponentCarriers", UintegerValue (2)); //set number of component carriers to 2
-     Config::SetDefault ("ns3::LteHelper::EnbComponentCarrierManager", StringValue ("ns3::RrComponentCarrierManager")); //split traffic equally among carriers
-   }
+    {
+      Config::SetDefault ("ns3::MmWaveHelper::UseCa",BooleanValue (useCa));
+      Config::SetDefault ("ns3::MmWaveHelper::NumberOfComponentCarriers",UintegerValue (2));
+      Config::SetDefault ("ns3::MmWaveHelper::EnbComponentCarrierManager",StringValue ("ns3::MmWaveRrComponentCarrierManager"));
+    }
 
-  //Initialising the ltehelper function
-  Ptr<LteHelper> lteHelper = CreateObject<LteHelper> ();
+  //Creating the mmwavehelper object
+  Ptr<MmWaveHelper> ptr_mmWave = CreateObject<MmWaveHelper> ();
+
+  //and then initialising it
+  ptr_mmWave->Initialize ();
 
   // Uncomment to enable logging
 //  lteHelper->EnableLogComponents ();
@@ -150,17 +233,15 @@ int main (int argc, char *argv[])
   mobility.Install (clientServerNodes.Get(0));
   BuildingsHelper::Install (clientServerNodes.Get(0));
 
-  // Create Devices and install them in the Nodes (eNB and UE)
-  NetDeviceContainer enbDevs;
-  NetDeviceContainer ueDevs;
   // Default scheduler is PF (proportionally fair), uncomment to use RR (round robin)
   //lteHelper->SetSchedulerType ("ns3::RrFfMacScheduler");
 
-  enbDevs = lteHelper->InstallEnbDevice (enbNodes);
-  ueDevs = lteHelper->InstallUeDevice (clientServerNodes.Get (0));
+ // Create Devices and install them in the Nodes (eNB and UE)
+  NetDeviceContainer enbDevs = ptr_mmWave->InstallEnbDevice (enbNodes);
+  NetDeviceContainer ueDevs= ptr_mmWave->InstallUeDevice (clientServerNodes.Get (0));
 
-  // Attach a UE to a eNB
-  lteHelper->Attach (ueDevs, enbDevs.Get (0));
+  //Attach ue to enb
+  ptr_mmWave->AttachToClosestEnb (ueDevs, enbDevs.Get (0));
 
   //Whenever a user equipment is being provided with any service,
   //the service has to be associated with a Radio Bearer specifying
@@ -170,70 +251,61 @@ int main (int argc, char *argv[])
   // Activate a data radio bearer
   enum EpsBearer::Qci q = EpsBearer::GBR_CONV_VOICE;
   EpsBearer bearer (q);
-  lteHelper->ActivateDataRadioBearer (ueDevs, bearer);
+  ptr_mmWave->ActivateDataRadioBearer (ueDevs, bearer);
 
-  //Create P2P link
-  PointToPointHelper pointToPoint;
-  //Set P2P attributes
-  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
-  pointToPoint.SetChannelAttribute ("Delay", StringValue ("2ms"));
-  //install on client/server nodes
-  NetDeviceContainer clientServerDevs;
-  clientServerDevs = pointToPoint.Install (clientServerNodes);
+   //Create P2P link
+   PointToPointHelper pointToPoint;
+   //Set P2P attributes
+   pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
+   pointToPoint.SetChannelAttribute ("Delay", StringValue ("2ms"));
+   //install on client/server nodes
+   NetDeviceContainer clientServerDevs;
+   clientServerDevs = pointToPoint.Install (clientServerNodes);
   
-  //Use the internet stack helper and install on the ue nodes
-  InternetStackHelper internet;
-  internet.Install (clientServerNodes);
+   //Use the internet stack helper and install on the ue nodes
+   InternetStackHelper internet;
+   internet.Install (clientServerNodes);
   
-  //Assigning IP addresses
-//  if (useV6 == false)
-//    {
-      Ipv4AddressHelper ipv4;
-      ipv4.SetBase ("10.1.1.0", "255.255.255.0");
-      Ipv4InterfaceContainer i = ipv4.Assign (clientServerDevs);
-//      serverAddress = Address (i.GetAddress (1));
-//    }
-//  else
-//    {
-//      Ipv6AddressHelper ipv6;
-//      ipv6.SetBase ("2001:0000:f00d:cafe::", Ipv6Prefix (64));
-//      Ipv6InterfaceContainer i6 = ipv6.Assign (clientServerDevs);
-//      serverAddress = Address(i6.GetAddress (1,1));
-//    }
+   //Set base IPv4 addresses
+   Ipv4AddressHelper address;
+   address.SetBase ("10.1.1.0", "255.255.255.0");
+   //assign these addresses to the client/server devices
+   Ipv4InterfaceContainer interfaces = address.Assign (clientServerDevs);
+   Ipv4Address serverAddress = interfaces.GetAddress (1);
+  
+   // Create HTTP server helper
+   ThreeGppHttpServerHelper serverHelper (serverAddress);
+  
+   // Install HTTP server
+   ApplicationContainer serverApps = serverHelper.Install (clientServerNodes.Get (1));
+   Ptr<ThreeGppHttpServer> httpServer = serverApps.Get (0)->GetObject<ThreeGppHttpServer> ();
 
-  // Create a UDP Server on the receiver
-  uint16_t port = 50000;
-//  uint32_t MaxPacketSize = 1024;
-  Time interPacketInterval = Seconds (0.05);
-//  uint32_t maxPacketCount = 320;
-  VoipServerHelper voipServer (port);
-//  voipServer.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
-  voipServer.SetAttribute ("Interval", TimeValue (interPacketInterval));
-//  voipServer.SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
-  ApplicationContainer apps = voipServer.Install (clientServerNodes.Get(1));
-  apps.Start (Seconds (1.0));
-//  apps.Add (voipServer.Install (clientServerNodes.Get(1)));
+   // Example of connecting to the trace sources for server
+   httpServer->TraceConnectWithoutContext ("ConnectionEstablished", MakeCallback (&ServerConnectionEstablished));
+   httpServer->TraceConnectWithoutContext ("MainObject", MakeCallback (&MainObjectGenerated));
+   httpServer->TraceConnectWithoutContext ("EmbeddedObject", MakeCallback (&EmbeddedObjectGenerated));
+   httpServer->TraceConnectWithoutContext ("Tx", MakeCallback (&ServerTx));
 
-//  UdpServerHelper server (port);
-// ApplicationContainer apps = server.Install (clientServerNodes.Get(1));
-//  apps.Start (Seconds (1.0));
+   // Setup HTTP variables for the server
+   PointerValue varPtr;
+   httpServer->GetAttribute ("Variables", varPtr);
+   Ptr<ThreeGppHttpVariables> httpVariables = varPtr.Get<ThreeGppHttpVariables> ();
+   httpVariables->SetMainObjectSizeMean (102400); // 100kB - mean of the main object sizes in bytes
+   httpVariables->SetMainObjectSizeStdDev (40960); // 40kB - standard deviation of main object sizes in bytes
+  
+   // Create HTTP client helper
+   ThreeGppHttpClientHelper clientHelper (serverAddress);
+  
+   // Install HTTP client
+   ApplicationContainer clientApps = clientHelper.Install (clientServerNodes.Get (0));
+   Ptr<ThreeGppHttpClient> httpClient = clientApps.Get (0)->GetObject<ThreeGppHttpClient> ();
 
- // Create one UdpClient application to send UDP datagrams from node zero to node one.
-  VoipClientHelper voipClient (i.GetAddress(1), port);
-  apps = voipClient.Install (clientServerNodes.Get(0)); 
-  apps.Start (Seconds (2.0));
-//  apps.Add (voipClient.Install (clientServerNodes.Get(1)));
+  // Example of connecting to the trace sources for client
+  httpClient->TraceConnectWithoutContext ("RxMainObject", MakeCallback (&ClientMainObjectReceived));
+  httpClient->TraceConnectWithoutContext ("RxEmbeddedObject", MakeCallback (&ClientEmbeddedObjectReceived));
+  httpClient->TraceConnectWithoutContext ("Rx", MakeCallback (&ClientRx));
 
-//   uint32_t MaxPacketSize = 1024;
-//   Time interPacketInterval = Seconds (0.05);
-//   uint32_t maxPacketCount = 320;
-//   UdpClientHelper client (serverAddress, port);
-//   client.SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
-//   client.SetAttribute ("Interval", TimeValue (interPacketInterval));
-//   client.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
-//   apps = client.Install (clientServerNodes.Get (0));
-//   apps.Start (Seconds (2.0));
-
+//V2
 /*
    // energy source //
    BasicEnergySourceHelper basicSourceHelper;
@@ -254,6 +326,8 @@ int main (int argc, char *argv[])
 
 //   DeviceEnergyModelContainer deviceModels = liIonSourceHelper.Install (ueDevs, sources);
 
+
+//V1
    //configuring energy source helper
 //   liIonSourceHelper.Set("LiIonEnergySourceInitialEnergyJ", DoubleValue (35000.00)); //Joules
 //   liIonSourceHelper.Set("InitialCellVoltage", DoubleValue (3.7)); //ax voltage when fully charged
@@ -270,20 +344,19 @@ int main (int argc, char *argv[])
 
 //  PrintCellInfo (liIonSourceHelper);
 
-//LTE ALL tracing
-lteHelper->EnableTraces (); //creates Dl* and Ul* files
+//mmwave tracing ALL LAYERS
+ptr_mmWave->EnableTraces (); //creates Dl* and Ul* files
 
-//LTE LAYER tracing
-//lteHelper->EnablePhyTraces ();
-//lteHelper->EnableMacTraces ();
-//lteHelper->EnableRlcTraces ();
-//lteHelper->EnablePdcpTraces ();
+//mmwave LAYER tracing
+//ptr_Helper->EnablePhyTraces ();
+//ptr_Helper->EnableMacTraces ();
+//ptr_Helper->EnableRlcTraces ();
+//ptr_Helper->EnablePdcpTraces ();
 
 //P2P tracing
 AsciiTraceHelper ascii;
-pointToPoint.EnableAsciiAll (ascii.CreateFileStream ("ASCIIVoIPRandomWalk.tr")); //ascii
-pointToPoint.EnablePcapAll ("PCAPVoIPRandomWalk"); //pcap
-
+pointToPoint.EnableAsciiAll (ascii.CreateFileStream ("ASCIImmwaveHTTPRandomWalk.tr")); //ascii
+pointToPoint.EnablePcapAll ("PCAPmmwaveHTTPRandomWalk"); //pcap
 
 // Flow monitor
 Ptr<FlowMonitor> flowMonitor;
@@ -294,12 +367,12 @@ flowMonitor->SetAttribute("DelayBinWidth", DoubleValue(0.001));
 flowMonitor->SetAttribute("JitterBinWidth", DoubleValue(0.001));
 flowMonitor->SetAttribute("PacketSizeBinWidth", DoubleValue(20));
 
+//clientApps.Stop (Seconds (simTime));;
+//Simulator::Stop (Seconds(simTime+cleanup_time));
 
 //Running and Stopping simulation
-  //Simulator::Stop (Seconds (simTime));
-  Simulator::Stop (Seconds (simTime));
-  Simulator::Run ();
-
+Simulator::Stop (Seconds (simTime));
+Simulator::Run ();
 
 //Callback to class, checks for packets that appear to be lost
 flowMonitor->CheckForLostPackets();
@@ -310,17 +383,16 @@ std::map<FlowId, FlowMonitor::FlowStats> stats = flowMonitor->GetFlowStats ();
 for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin (); i != stats.end (); ++i)
 {
 Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
-std::cout << "Flow " << i->first << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n";
-std::cout << " Tx Bytes: " << i->second.txBytes << "\n";
-std::cout << " Rx Bytes: " << i->second.rxBytes << "\n";
-std::cout << " Throughput: " << i->second.rxBytes * 8.0 / (i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds())/1024/1024 << " Mbps\n";
-std::cout << " Delay: " << i->second.delaySum << "\n";
-std::cout << " Lost Packets: " << i->second.lostPackets << "\n";
+	std::cout << "Flow " << i->first << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n";
+	std::cout << " Tx Bytes: " << i->second.txBytes << "\n";
+	std::cout << " Rx Bytes: " << i->second.rxBytes << "\n";
+	std::cout << " Throughput: " << i->second.rxBytes * 8.0 / (i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds())/1024/1024 << " Mbps\n";
+	std::cout << " Delay: " << i->second.delaySum << "\n";
+	std::cout << " Lost Packets: " << i->second.lostPackets << "\n";
 }
 
 //Flow monitor file generation
-flowMonitor->SerializeToXmlFile("FlowMonitorVoIPRandomWalk.xml", true, true); //histograms and probes enabled
-
+flowMonitor->SerializeToXmlFile("FlowMonitormmwaveHTTPRandomWalk.xml", true, true); //histograms and probes enabled
 
   // GtkConfigStore config;
   // config.ConfigureAttributes ();
