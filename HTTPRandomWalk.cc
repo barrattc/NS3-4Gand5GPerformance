@@ -51,7 +51,7 @@ using namespace ns3;
 //        }
 //}
 
- NS_LOG_COMPONENT_DEFINE ("ThreeGppHttpExample");
+ NS_LOG_COMPONENT_DEFINE ("HTTPRandomWalk");
  
  void
  ServerConnectionEstablished (Ptr<const ThreeGppHttpServer>, Ptr<Socket>)
@@ -164,7 +164,7 @@ int main (int argc, char *argv[])
    LogComponentEnableAll (LOG_PREFIX_TIME);
    //LogComponentEnableAll (LOG_PREFIX_FUNC);
    //LogComponentEnable ("ThreeGppHttpClient", LOG_INFO);
-   LogComponentEnable ("ThreeGppHttpExample", LOG_INFO);
+   LogComponentEnable ("HTTPRandomWalk", LOG_INFO);
 
   //Other default inputs can be gathered from a pre-existing text file and loaded into a future simulation.
   ConfigStore inputConfig;
