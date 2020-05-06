@@ -25,8 +25,6 @@
 #include "ns3/lte-module.h"
 #include "ns3/config-store.h"
 #include <ns3/buildings-helper.h>
-//#include "ns3/gtk-config-store.h"
-
 #include "ns3/a2-a4-rsrq-handover-algorithm.h"
 #include "ns3/random-walk-2d-mobility-model.h"
 #include "ns3/netanim-module.h"
@@ -145,7 +143,7 @@ int main (int argc, char *argv[])
   mobility.Install (enbNodes);
   BuildingsHelper::Install (enbNodes);
   
-  //Set ue nodes movement
+  //Set UE nodes movement - FAST MOBILITY CAUSES FAILURES 
   Ptr<ListPositionAllocator> uePositionAlloc = CreateObject<ListPositionAllocator> ();
   	  //x, y, z coords
 	  uePositionAlloc->Add (Vector (100, 0.0, 0.0));		// ue1

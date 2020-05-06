@@ -31,7 +31,6 @@
 #include "ns3/energy-module.h"
 #include "ns3/flow-monitor-helper.h"
 #include "ns3/ipv4-flow-classifier.h"
-//#include "ns3/gtk-config-store.h"
 
 //Define namespace
 using namespace ns3;
@@ -79,7 +78,6 @@ NS_LOG_COMPONENT_DEFINE ("UDPRandomWalk");
      }
  }
 
-
 //Main function
 int main (int argc, char *argv[])
 {
@@ -98,10 +96,6 @@ int main (int argc, char *argv[])
   cmd.Parse (argc, argv);
  
   LogComponentEnable ("UDPRandomWalk", LOG_INFO);
-
-  //Other default inputs can be gathered from a pre-existing text file and loaded into a future simulation.
-  ConfigStore inputConfig;
-  inputConfig.ConfigureDefaults ();
 
   // Parse again so you can override default values from the command line
   cmd.Parse (argc, argv);
@@ -140,19 +134,12 @@ int main (int argc, char *argv[])
   // Create Devices and install them in the Nodes (eNB and UE)
   NetDeviceContainer enbDevs;
   NetDeviceContainer ueDevs;
-  // Default scheduler is PF (proportionally fair), uncomment to use RR (round robin)
-  //lteHelper->SetSchedulerType ("ns3::RrFfMacScheduler");
 
   enbDevs = lteHelper->InstallEnbDevice (enbNodes);
   ueDevs = lteHelper->InstallUeDevice (clientServerNodes.Get (0));
 
   // Attach a UE to a eNB
   lteHelper->Attach (ueDevs, enbDevs.Get (0));
-
-  //Whenever a user equipment is being provided with any service,
-  //the service has to be associated with a Radio Bearer specifying
-  //the configuration for Layer-2 and Physical Layer in order to have
-  //its QoS clearly defined.
 
   // Activate a data radio bearer
   enum EpsBearer::Qci q = EpsBearer::GBR_CONV_VOICE;
@@ -162,8 +149,8 @@ int main (int argc, char *argv[])
   //Create P2P link
   PointToPointHelper pointToPoint;
   //Set P2P attributes
-  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
-  pointToPoint.SetChannelAttribute ("Delay", StringValue ("2ms"));
+  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("60Mbps"));
+  pointToPoint.SetChannelAttribute ("Delay", StringValue ("30ms"));
   //install on client/server nodes
   NetDeviceContainer clientServerDevs;
   clientServerDevs = pointToPoint.Install (clientServerNodes);
@@ -225,18 +212,6 @@ int main (int argc, char *argv[])
 
 //   DeviceEnergyModelContainer deviceModels = liIonSourceHelper.Install (ueDevs, sources);
 
-   //configuring energy source helper
-//   liIonSourceHelper.Set("LiIonEnergySourceInitialEnergyJ", DoubleValue (35000.00)); //Joules
-//   liIonSourceHelper.Set("InitialCellVoltage", DoubleValue (3.7)); //ax voltage when fully charged
-//   liIonSourceHelper.Set("LiIonEnergyLowBatteryThreshold", DoubleValue (0.10)); //as a fraction of the initial energy
-//   liIonSourceHelper.Set("PeriodicEnergyUpdateInterval", TimeValue (Seconds (1.0))); //time between two consectutive periodic energy updates
-//   liIonSourceHelper->SetLiIonEnergySourceInitialEnergyJ (35000.00);
-
-//   liIonSourceHelper->SetInitialEnergy (35000.00);
-//   liIonSourceHelper->SetInitialSupplyVoltage(3.7);
-//   liIonSourceHelper->SetEnergyUpdateInterval (Time (1.0));
-
-
    //3000 mAh and 3.7V is average mobile phone
 
 //  PrintCellInfo (liIonSourceHelper);
@@ -244,7 +219,7 @@ int main (int argc, char *argv[])
 //LTE ALL tracing
 lteHelper->EnableTraces (); //creates Dl* and Ul* files
 
-//LTE LAYER tracing
+//Uncomment for specific LTE LAYER tracing
 //lteHelper->EnablePhyTraces ();
 //lteHelper->EnableMacTraces ();
 //lteHelper->EnableRlcTraces ();
@@ -255,7 +230,6 @@ AsciiTraceHelper ascii;
 pointToPoint.EnableAsciiAll (ascii.CreateFileStream ("ASCIIUDPRandomWalk.tr")); //ascii
 pointToPoint.EnablePcapAll ("PCAPUDPRandomWalk"); //pcap
 
-
 // Flow monitor
 Ptr<FlowMonitor> flowMonitor;
 FlowMonitorHelper flowHelper;
@@ -265,12 +239,10 @@ flowMonitor->SetAttribute("DelayBinWidth", DoubleValue(0.001));
 flowMonitor->SetAttribute("JitterBinWidth", DoubleValue(0.001));
 flowMonitor->SetAttribute("PacketSizeBinWidth", DoubleValue(20));
 
-
 //Running and Stopping simulation
   //Simulator::Stop (Seconds (simTime));
   Simulator::Stop (Seconds (simTime));
   Simulator::Run ();
-
 
 //Callback to class, checks for packets that appear to be lost
 flowMonitor->CheckForLostPackets();
@@ -291,10 +263,6 @@ std::cout << " Lost Packets: " << i->second.lostPackets << "\n";
 
 //Flow monitor file generation
 flowMonitor->SerializeToXmlFile("FlowMonitorUDPRandomWalk.xml", true, true); //histograms and probes enabled
-
-
-  // GtkConfigStore config;
-  // config.ConfigureAttributes ();
 
   Simulator::Destroy ();
   return 0;
