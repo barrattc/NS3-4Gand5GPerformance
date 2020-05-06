@@ -139,7 +139,7 @@ int main (int argc, char *argv[])
     "Mode", StringValue ("Time"), //time or distance mode
     "Time", StringValue ("2s"), //change current direction and speed after this delay
     "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"), //settings constant speed of walk
-    "Bounds", RectangleValue (Rectangle (0.0, 20.0, 0.0, 20.0)));
+    "Bounds", RectangleValue (Rectangle (-50.0, 50.0, -50.0, 50.0)));
   mobility.Install (clientServerNodes.Get(0));
   BuildingsHelper::Install (clientServerNodes.Get(0));
 
@@ -161,8 +161,8 @@ int main (int argc, char *argv[])
   //Create P2P link
   PointToPointHelper pointToPoint;
   //Set P2P attributes
-  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
-  pointToPoint.SetChannelAttribute ("Delay", StringValue ("2ms"));
+  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("60Mbps"));
+  pointToPoint.SetChannelAttribute ("Delay", StringValue ("30ms"));
   //install on client/server nodes
   NetDeviceContainer clientServerDevs;
   clientServerDevs = pointToPoint.Install (clientServerNodes);
