@@ -32,4 +32,4 @@ You must copy the .cc files from this project to your 'Scratch' directory within
       ./waf --run 'scratch/HTTPRandomWalk --simTime=500' //This will run the file for 500 seconds instead of the default time set in the file.
 
 ## Authors
-- Charlie Barratt, Computing (BSc) student at University of Portsmouth 
+- Charlie Barratt (UP813654), Computing (BSc) student at University of Portsmouth 
