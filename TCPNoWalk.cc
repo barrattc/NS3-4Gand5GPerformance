@@ -150,8 +150,8 @@ int main (int argc, char *argv[])
   //Create P2P link
   PointToPointHelper pointToPoint;
   //Set P2P attributes
-  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
-  pointToPoint.SetChannelAttribute ("Delay", StringValue ("2ms"));
+  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("60Mbps"));
+  pointToPoint.SetChannelAttribute ("Delay", StringValue ("30ms"));
   //install on client/server nodes
   NetDeviceContainer clientServerDevs;
   clientServerDevs = pointToPoint.Install (clientServerNodes);
