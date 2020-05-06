@@ -209,7 +209,7 @@ int main (int argc, char *argv[])
     "Mode", StringValue ("Time"), //time or distance mode
     "Time", StringValue ("2s"), //change current direction and speed after this delay
     "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"), //set constant speed of walk
-    "Bounds", RectangleValue (Rectangle (0.0, 20.0, 0.0, 20.0)));
+    "Bounds", RectangleValue (Rectangle (-50.0, 50.0, -50.0, 50.0)));
   mobility.Install (clientServerNodes.Get(0));
   BuildingsHelper::Install (clientServerNodes.Get(0));
 
