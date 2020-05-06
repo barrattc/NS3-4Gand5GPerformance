@@ -43,7 +43,6 @@
 #include "ns3/flow-monitor-helper.h"
 #include "ns3/ipv4-flow-classifier.h"
 #include "ns3/mmwave-helper.h"
-//#include "ns3/gtk-config-store.h"
 
 //Define namespace
 using namespace ns3;
