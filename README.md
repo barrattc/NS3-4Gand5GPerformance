@@ -1,21 +1,28 @@
-# NS3-4Gand5GEnergyComparison
+# NS3-4Gand5GPerformance
 
 This is my final year project for my Computing (BSc) degree at the University of Portsmouth.
 
 ## Description and Purpose
 
-This project aims to compare the energy efficiency of 4G and 5G cellular technologies using various case studies. The case studies will emulate everyday uses of LTE with mobile phones e.g. walking around whilst opening multiple HTTP/S web pages.
+This project aims to compare the performance of 4G and 5G cellular technologies using case studies with different traffic types: TCP, UDP, HTTP and VoIP. The case studies will emulate everyday uses of with mobile phones e.g. walking around whilst opening multiple HTTP/S web pages.
 
-The purpose of this project is to determine if the claim that 5G will be more energ efficient than 4G for mobile devices is true and to what extent.
+The purpose of this project is to determine to what extent it can achieve the claimed benefits over its predecessors.
 
-The NS3 Energy Model will be utilised to retrieve the power consumption of the ue (mobile phones) and the Mobility Model will be used to simulate the movement.
+## NS3 Modules Used 
+- The LTE module will be utilised to simulate the 4G simulations.
+- NYU Wirelss' mmwave module will be utilised to simulate the 5G simulation.
+- The Mobility Model will be utilised to simulate the UE's movement.
+- The Flow Monitor module will be usitilsed to measure the tx bytes, rx bytes, throughput (Mbps) and delay (ns). 
 
 ## How to Run
 
-Prequisites: You will need to have NS-3 installed (I am running version 3.30).
+Prequisites: 
 
-You must copy the .cc files from this project to the 'Scratch' directory.
-1. Files are run from the 'ns-3-dev' folder with the use of the'./waf --run' command, example below
+- Install NS-3 (I am running version 3.29) with NYU Wireless' mmwave module.
+- Install Prof. Dr. Saulo da Mata's VoIP Traffic Generator.
+
+You must copy the .cc files from this project to your 'Scratch' directory within the 'ns3-mmwave' folder.
+1. Files are run from the 'ns3-mmwave' folder by default with the use of the'./waf --run' command, example below
 
       ./waf --run scratch/HTTPRandomWalk //Note that the file extension is not included
 
@@ -24,4 +31,4 @@ You must copy the .cc files from this project to the 'Scratch' directory.
       ./waf --run 'scratch/HTTPRandomWalk --simTime=500' //This will run the file for 500 seconds instead of the default time set in the file.
       
 ## Authors
-- Charlie Barratt
+- Charlie Barratt, Computing (BSc) student at University of Portsmouth 
