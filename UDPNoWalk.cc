@@ -182,9 +182,9 @@ int main (int argc, char *argv[])
   apps.Start (Seconds (1.0));
   
  // Create one UdpClient application to send UDP datagrams from node zero to node one.
-   uint32_t MaxPacketSize = 1024;
-   Time interPacketInterval = Seconds (0.05);
-   uint32_t maxPacketCount = 320;
+   uint32_t MaxPacketSize = 1024; //size of each packet sent in bytes
+   Time interPacketInterval = Seconds (0.05); // how often to send packets
+   uint32_t maxPacketCount = 320; //max number of packets to send
    UdpClientHelper client (serverAddress, port);
    client.SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
    client.SetAttribute ("Interval", TimeValue (interPacketInterval));

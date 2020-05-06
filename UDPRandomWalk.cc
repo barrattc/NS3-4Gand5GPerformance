@@ -139,7 +139,7 @@ int main (int argc, char *argv[])
     "Mode", StringValue ("Time"), //time or distance mode
     "Time", StringValue ("2s"), //change current direction and speed after this delay
     "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"), //speed of walk
-    "Bounds", RectangleValue (Rectangle (0.0, 20.0, 0.0, 20.0)));
+    "Bounds", RectangleValue (Rectangle (-50.0, 50.0, -50.0, 50.0)));
   mobility.Install (clientServerNodes.Get(0));
   BuildingsHelper::Install (clientServerNodes.Get(0));
 
@@ -194,9 +194,9 @@ int main (int argc, char *argv[])
   apps.Start (Seconds (1.0));
   
  // Create one UdpClient application to send UDP datagrams from node zero to node one.
-   uint32_t MaxPacketSize = 1024;
-   Time interPacketInterval = Seconds (0.05);
-   uint32_t maxPacketCount = 320;
+   uint32_t MaxPacketSize = 1024; //size of each packet sent in bytes
+   Time interPacketInterval = Seconds (0.05); // how often to send packets
+   uint32_t maxPacketCount = 320; //max number of packets to send
    UdpClientHelper client (serverAddress, port);
    client.SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
    client.SetAttribute ("Interval", TimeValue (interPacketInterval));
