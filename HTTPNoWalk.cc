@@ -187,7 +187,7 @@ int main (int argc, char *argv[])
   // Uncomment to enable logging
 //  lteHelper->EnableLogComponents ();
 
-  // Create Nodes: 2eNodeB and 2 UE
+  // Create Nodes: 2eNodeB and 1 client/1 server
   NodeContainer enbNodes;
   NodeContainer clientServerNodes;
   enbNodes.Create (1);
@@ -263,8 +263,8 @@ int main (int argc, char *argv[])
    PointerValue varPtr;
    httpServer->GetAttribute ("Variables", varPtr);
    Ptr<ThreeGppHttpVariables> httpVariables = varPtr.Get<ThreeGppHttpVariables> ();
-   httpVariables->SetMainObjectSizeMean (102400); // 100kB - mean of the main object sizes in bytes
-   httpVariables->SetMainObjectSizeStdDev (40960); // 40kB - standard deviation of main object sizes in bytes
+   httpVariables->SetMainObjectSizeMean (102400); // 100KB - mean of the main object sizes in bytes
+   httpVariables->SetMainObjectSizeStdDev (40960); // 40KB - standard deviation of main object sizes in bytes
   
    // Create HTTP client helper
    ThreeGppHttpClientHelper clientHelper (serverAddress);
