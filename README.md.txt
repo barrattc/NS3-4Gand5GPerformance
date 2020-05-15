@@ -6,7 +6,7 @@ This is my final year project for my Computing (BSc) degree at the University of
 
 This project aims to compare the performance of 4G and 5G cellular technologies using case studies with different traffic types: TCP, UDP, HTTP and VoIP. The case studies will emulate everyday uses of with mobile phones e.g. walking around whilst opening multiple HTTP/S web pages.
 
-The purpose of this project is to determine to what extent 5G can achieve the claimed benefits over its predecessors.
+The purpose of this project is to determine to what extent it can achieve the claimed benefits over its predecessors.
 
 ## NS3 Modules Used 
 - The LTE module will be utilised to simulate the 4G simulations.
@@ -32,4 +32,4 @@ You must copy the .cc files from this project to your 'Scratch' directory within
       ./waf --run 'scratch/HTTPRandomWalk --simTime=500' //This will run the file for 500 seconds instead of the default time set in the file.
 
 ## Authors
-- Charlie Barratt (UP813654), Computing (BSc) student at University of Portsmouth 
+- Charlie Barratt, Computing (BSc) student at University of Portsmouth 

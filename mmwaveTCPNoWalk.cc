@@ -37,7 +37,6 @@
 #include "ns3/flow-monitor-helper.h"
 #include "ns3/ipv4-flow-classifier.h"
 #include "ns3/mmwave-helper.h"
-//#include "ns3/gtk-config-store.h"
 
 //Define namespace
 using namespace ns3;
@@ -106,10 +105,6 @@ int main (int argc, char *argv[])
  
   LogComponentEnable ("mmwaveTCPNoWalk", LOG_INFO);
 
-  //Other default inputs can be gathered from a pre-existing text file and loaded into a future simulation.
-  ConfigStore inputConfig;
-  inputConfig.ConfigureDefaults ();
-
   // Parse again so you can override default values from the command line
   cmd.Parse (argc, argv);
 
@@ -151,11 +146,6 @@ int main (int argc, char *argv[])
   //Attach ue to enb
   ptr_mmWave->AttachToClosestEnb (ueDevs, enbDevs.Get (0));
 
-  //Whenever a user equipment is being provided with any service,
-  //the service has to be associated with a Radio Bearer specifying
-  //the configuration for Layer-2 and Physical Layer in order to have
-  //its QoS clearly defined.
-
   // Activate a data radio bearer
   enum EpsBearer::Qci q = EpsBearer::GBR_CONV_VOICE;
   EpsBearer bearer (q);
@@ -164,8 +154,8 @@ int main (int argc, char *argv[])
   //Create P2P link
   PointToPointHelper pointToPoint;
   //Set P2P attributes
-  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
-  pointToPoint.SetChannelAttribute ("Delay", StringValue ("2ms"));
+  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("10Gbps"));
+  pointToPoint.SetChannelAttribute ("Delay", StringValue ("5ms"));
   //install on client/server nodes
   NetDeviceContainer clientServerDevs;
   clientServerDevs = pointToPoint.Install (clientServerNodes);
@@ -174,37 +164,21 @@ int main (int argc, char *argv[])
   InternetStackHelper internet;
   internet.Install (clientServerNodes);
   
-  //Assigning IP addresses
-//  if (useV6 == false)
-  //  {
+  //Assigning IPv4 addresses onto the clien/server nodes
   Ipv4AddressHelper ipv4;
   ipv4.SetBase ("10.1.1.0", "255.255.255.0");
   Ipv4InterfaceContainer i = ipv4.Assign (clientServerDevs);
-   // }
- /* else
-    {
-      Ipv6AddressHelper ipv6;
-      ipv6.SetBase ("2001:0000:f00d:cafe::", Ipv6Prefix (64));
-      Ipv6InterfaceContainer i6 = ipv6.Assign (clientServerDevs);
-      serverAddress = Address(i6.GetAddress (1,1));
-    }
-*/
-  
-  // Create a TCP Server on the receiver
-  uint16_t port = 50000;
+
   // Create a packet sink to receive packets from OnOff application
+  uint16_t port = 50000;
   Address sinkAddress (InetSocketAddress (i.GetAddress (1), port));
   PacketSinkHelper sinkHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), port));
   ApplicationContainer sinkApp = sinkHelper.Install (clientServerNodes.Get(1));
   sinkApp.Start (Seconds (1.0));
 
   // Create the OnOff applications to send TCP packets to the server
-   uint32_t MaxPacketSize = 1024;
-//   Time interPacketInterval = Seconds (0.05);
-//   uint32_t maxPacketCount = 320;
+   uint32_t MaxPacketSize = 1024; //max packet size to send in bytes
    OnOffHelper client ("ns3::TcpSocketFactory", sinkAddress);
-//   client.SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
-//   client.SetAttribute ("Interval", TimeValue (interPacketInterval));
    client.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
    client.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
    client.SetAttribute ("DataRate", DataRateValue (DataRate ("10Mbps")));
@@ -234,18 +208,6 @@ int main (int argc, char *argv[])
 
 //   DeviceEnergyModelContainer deviceModels = liIonSourceHelper.Install (ueDevs, sources);
 
-   //configuring energy source helper
-//   liIonSourceHelper.Set("LiIonEnergySourceInitialEnergyJ", DoubleValue (35000.00)); //Joules
-//   liIonSourceHelper.Set("InitialCellVoltage", DoubleValue (3.7)); //ax voltage when fully charged
-//   liIonSourceHelper.Set("LiIonEnergyLowBatteryThreshold", DoubleValue (0.10)); //as a fraction of the initial energy
-//   liIonSourceHelper.Set("PeriodicEnergyUpdateInterval", TimeValue (Seconds (1.0))); //time between two consectutive periodic energy updates
-//   liIonSourceHelper->SetLiIonEnergySourceInitialEnergyJ (35000.00);
-
-//   liIonSourceHelper->SetInitialEnergy (35000.00);
-//   liIonSourceHelper->SetInitialSupplyVoltage(3.7);
-//   liIonSourceHelper->SetEnergyUpdateInterval (Time (1.0));
-
-
    //3000 mAh and 3.7V is average mobile phone
 
 //  PrintCellInfo (liIonSourceHelper);
@@ -253,7 +215,7 @@ int main (int argc, char *argv[])
 //mmwave tracing ALL LAYERS
 ptr_mmWave->EnableTraces (); //creates Dl* and Ul* files
 
-//mmwave LAYER tracing
+//Uncomment for specific mmwave LAYER tracing
 //ptr_Helper->EnablePhyTraces ();
 //ptr_Helper->EnableMacTraces ();
 //ptr_Helper->EnableRlcTraces ();
@@ -276,7 +238,6 @@ flowMonitor->SetAttribute("PacketSizeBinWidth", DoubleValue(20));
 
 
 //Running and Stopping simulation
-  //Simulator::Stop (Seconds (simTime));
   Simulator::Stop (Seconds (simTime));
   Simulator::Run ();
 
@@ -302,10 +263,6 @@ for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin ()
 
 //Flow monitor file generation
 flowMonitor->SerializeToXmlFile("FlowMonitormmwaveTCPNoWalk.xml", true, true); //histograms and probes enabled
-
-
-  // GtkConfigStore config;
-  // config.ConfigureAttributes ();
 
   Simulator::Destroy ();
   return 0;

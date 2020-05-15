@@ -33,7 +33,6 @@
 #include "ns3/ipv4-flow-classifier.h"
 #include "ns3/voip-client-server-helper.h"
 #include "ns3/ipv4-address.h"
-//#include "ns3/gtk-config-store.h"
 
 //Define namespace
 using namespace ns3;
@@ -101,10 +100,6 @@ int main (int argc, char *argv[])
  
   LogComponentEnable ("VoIPNoWalk", LOG_INFO);
 
-  //Other default inputs can be gathered from a pre-existing text file and loaded into a future simulation.
-  ConfigStore inputConfig;
-  inputConfig.ConfigureDefaults ();
-
   // Parse again so you can override default values from the command line
   cmd.Parse (argc, argv);
 
@@ -142,19 +137,12 @@ int main (int argc, char *argv[])
   // Create Devices and install them in the Nodes (eNB and UE)
   NetDeviceContainer enbDevs;
   NetDeviceContainer ueDevs;
-  // Default scheduler is PF (proportionally fair), uncomment to use RR (round robin)
-  //lteHelper->SetSchedulerType ("ns3::RrFfMacScheduler");
 
   enbDevs = lteHelper->InstallEnbDevice (enbNodes);
   ueDevs = lteHelper->InstallUeDevice (clientServerNodes.Get (0));
 
   // Attach a UE to a eNB
   lteHelper->Attach (ueDevs, enbDevs.Get (0));
-
-  //Whenever a user equipment is being provided with any service,
-  //the service has to be associated with a Radio Bearer specifying
-  //the configuration for Layer-2 and Physical Layer in order to have
-  //its QoS clearly defined.
 
   // Activate a data radio bearer
   enum EpsBearer::Qci q = EpsBearer::GBR_CONV_VOICE;
@@ -164,8 +152,8 @@ int main (int argc, char *argv[])
   //Create P2P link
   PointToPointHelper pointToPoint;
   //Set P2P attributes
-  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
-  pointToPoint.SetChannelAttribute ("Delay", StringValue ("2ms"));
+  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("60Mbps"));
+  pointToPoint.SetChannelAttribute ("Delay", StringValue ("30ms"));
   //install on client/server nodes
   NetDeviceContainer clientServerDevs;
   clientServerDevs = pointToPoint.Install (clientServerNodes);
@@ -174,54 +162,23 @@ int main (int argc, char *argv[])
   InternetStackHelper internet;
   internet.Install (clientServerNodes);
   
-  //Assigning IP addresses
-//  if (useV6 == false)
-//    {
-      Ipv4AddressHelper ipv4;
-      ipv4.SetBase ("10.1.1.0", "255.255.255.0");
-      Ipv4InterfaceContainer i = ipv4.Assign (clientServerDevs);
-//      serverAddress = Address (i.GetAddress (1));
-//    }
-//  else
-//    {
-//      Ipv6AddressHelper ipv6;
-//      ipv6.SetBase ("2001:0000:f00d:cafe::", Ipv6Prefix (64));
-//      Ipv6InterfaceContainer i6 = ipv6.Assign (clientServerDevs);
-//      serverAddress = Address(i6.GetAddress (1,1));
-//    }
+  // Assigning IPv4 addresses onto the client/server nodes
+  Ipv4AddressHelper ipv4;
+  ipv4.SetBase ("10.1.1.0", "255.255.255.0");
+  Ipv4InterfaceContainer i = ipv4.Assign (clientServerDevs);
 
   // Create a UDP Server on the receiver
   uint16_t port = 50000;
-//  uint32_t MaxPacketSize = 1024;
-  Time interPacketInterval = Seconds (0.05);
-//  uint32_t maxPacketCount = 320;
+  Time interPacketInterval = Seconds (0.05); //how often to send packets
   VoipServerHelper voipServer (port);
-//  voipServer.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
   voipServer.SetAttribute ("Interval", TimeValue (interPacketInterval));
-//  voipServer.SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
   ApplicationContainer apps = voipServer.Install (clientServerNodes.Get(1));
   apps.Start (Seconds (1.0));
-//  apps.Add (voipServer.Install (clientServerNodes.Get(1)));
-
-//  UdpServerHelper server (port);
-// ApplicationContainer apps = server.Install (clientServerNodes.Get(1));
-//  apps.Start (Seconds (1.0));
 
  // Create one UdpClient application to send UDP datagrams from node zero to node one.
   VoipClientHelper voipClient (i.GetAddress(1), port);
   apps = voipClient.Install (clientServerNodes.Get(0)); 
   apps.Start (Seconds (2.0));
-//  apps.Add (voipClient.Install (clientServerNodes.Get(1)));
-
-//   uint32_t MaxPacketSize = 1024;
-//   Time interPacketInterval = Seconds (0.05);
-//   uint32_t maxPacketCount = 320;
-//   UdpClientHelper client (serverAddress, port);
-//   client.SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
-//   client.SetAttribute ("Interval", TimeValue (interPacketInterval));
-//   client.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
-//   apps = client.Install (clientServerNodes.Get (0));
-//   apps.Start (Seconds (2.0));
 
 /*
    // energy source //
@@ -243,18 +200,6 @@ int main (int argc, char *argv[])
 
 //   DeviceEnergyModelContainer deviceModels = liIonSourceHelper.Install (ueDevs, sources);
 
-   //configuring energy source helper
-//   liIonSourceHelper.Set("LiIonEnergySourceInitialEnergyJ", DoubleValue (35000.00)); //Joules
-//   liIonSourceHelper.Set("InitialCellVoltage", DoubleValue (3.7)); //ax voltage when fully charged
-//   liIonSourceHelper.Set("LiIonEnergyLowBatteryThreshold", DoubleValue (0.10)); //as a fraction of the initial energy
-//   liIonSourceHelper.Set("PeriodicEnergyUpdateInterval", TimeValue (Seconds (1.0))); //time between two consectutive periodic energy updates
-//   liIonSourceHelper->SetLiIonEnergySourceInitialEnergyJ (35000.00);
-
-//   liIonSourceHelper->SetInitialEnergy (35000.00);
-//   liIonSourceHelper->SetInitialSupplyVoltage(3.7);
-//   liIonSourceHelper->SetEnergyUpdateInterval (Time (1.0));
-
-
    //3000 mAh and 3.7V is average mobile phone
 
 //  PrintCellInfo (liIonSourceHelper);
@@ -262,7 +207,7 @@ int main (int argc, char *argv[])
 //LTE ALL tracing
 lteHelper->EnableTraces (); //creates Dl* and Ul* files
 
-//LTE LAYER tracing
+//Uncomment for specific LTE LAYER tracing
 //lteHelper->EnablePhyTraces ();
 //lteHelper->EnableMacTraces ();
 //lteHelper->EnableRlcTraces ();
@@ -273,7 +218,6 @@ AsciiTraceHelper ascii;
 pointToPoint.EnableAsciiAll (ascii.CreateFileStream ("ASCIIVoIPNoWalk.tr")); //ascii
 pointToPoint.EnablePcapAll ("PCAPVoIPNoWalk"); //pcap
 
-
 // Flow monitor
 Ptr<FlowMonitor> flowMonitor;
 FlowMonitorHelper flowHelper;
@@ -283,12 +227,10 @@ flowMonitor->SetAttribute("DelayBinWidth", DoubleValue(0.001));
 flowMonitor->SetAttribute("JitterBinWidth", DoubleValue(0.001));
 flowMonitor->SetAttribute("PacketSizeBinWidth", DoubleValue(20));
 
-
 //Running and Stopping simulation
   //Simulator::Stop (Seconds (simTime));
   Simulator::Stop (Seconds (simTime));
   Simulator::Run ();
-
 
 //Callback to class, checks for packets that appear to be lost
 flowMonitor->CheckForLostPackets();
@@ -309,10 +251,6 @@ std::cout << " Lost Packets: " << i->second.lostPackets << "\n";
 
 //Flow monitor file generation
 flowMonitor->SerializeToXmlFile("FlowMonitorVoIPNoWalk.xml", true, true); //histograms and probes enabled
-
-
-  // GtkConfigStore config;
-  // config.ConfigureAttributes ();
 
   Simulator::Destroy ();
   return 0;

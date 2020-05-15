@@ -39,7 +39,6 @@
 #include "ns3/voip-client-server-helper.h"
 #include "ns3/ipv4-address.h"
 #include "ns3/mmwave-helper.h"
-//#include "ns3/gtk-config-store.h"
 
 //Define namespaces
 using namespace ns3;
@@ -111,10 +110,6 @@ int main (int argc, char *argv[])
  
   LogComponentEnable ("mmWaveVoIPRandomWalk", LOG_INFO);
 
-  //Other default inputs can be gathered from a pre-existing text file and loaded into a future simulation.
-  ConfigStore inputConfig;
-  inputConfig.ConfigureDefaults ();
-
   // Parse again so you can override default values from the command line
   cmd.Parse (argc, argv);
 
@@ -155,8 +150,8 @@ int main (int argc, char *argv[])
   mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
     "Mode", StringValue ("Time"), //time or distance mode
     "Time", StringValue ("2s"), //change current direction and speed after this delay
-    "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"), //speed of walk
-    "Bounds", RectangleValue (Rectangle (0.0, 20.0, 0.0, 20.0)));
+    "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"), //set constant speed of walk
+    "Bounds", RectangleValue (Rectangle (-50.0, 50.0, -50.0, 50.0)));
   mobility.Install (clientServerNodes.Get(0));
   BuildingsHelper::Install (clientServerNodes.Get(0));
 
@@ -165,13 +160,7 @@ int main (int argc, char *argv[])
   NetDeviceContainer ueDevs= ptr_mmWave->InstallUeDevice (clientServerNodes.Get (0));
 
   //Attach ue to enb
-  //ptr_mmWave->AttachToClosestEnb (eanbDevs, ueDevs);
   ptr_mmWave->AttachToClosestEnb (ueDevs, enbDevs.Get (0));
-
-  //Whenever a user equipment is being provided with any service,
-  //the service has to be associated with a Radio Bearer specifying
-  //the configuration for Layer-2 and Physical Layer in order to have
-  //its QoS clearly defined.
 
   // Activate a data radio bearer
   enum EpsBearer::Qci q = EpsBearer::GBR_CONV_VOICE;
@@ -181,8 +170,8 @@ int main (int argc, char *argv[])
   //Create P2P link
   PointToPointHelper pointToPoint;
   //Set P2P attributes
-  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
-  pointToPoint.SetChannelAttribute ("Delay", StringValue ("2ms"));
+  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("10Gbps"));
+  pointToPoint.SetChannelAttribute ("Delay", StringValue ("5ms"));
   //install on client/server nodes
   NetDeviceContainer clientServerDevs;
   clientServerDevs = pointToPoint.Install (clientServerNodes);
@@ -191,54 +180,23 @@ int main (int argc, char *argv[])
   InternetStackHelper internet;
   internet.Install (clientServerNodes);
   
-  //Assigning IP addresses
-  //  if (useV6 == false)
-  //    {
+  //Assigning IPv4 addresses onto client/server nodes
   Ipv4AddressHelper ipv4;
   ipv4.SetBase ("10.1.1.0", "255.255.255.0");
   Ipv4InterfaceContainer i = ipv4.Assign (clientServerDevs);
-  //      serverAddress = Address (i.GetAddress (1));
-  //    }
-  //  else
-  //    {
-  //      Ipv6AddressHelper ipv6;
-  //      ipv6.SetBase ("2001:0000:f00d:cafe::", Ipv6Prefix (64));
-  //      Ipv6InterfaceContainer i6 = ipv6.Assign (clientServerDevs);
-  //      serverAddress = Address(i6.GetAddress (1,1));
-  //    }
 
   // Create a UDP Server on the receiver
   uint16_t port = 50000;
-  //  uint32_t MaxPacketSize = 1024;
-  Time interPacketInterval = Seconds (0.05);
-  //  uint32_t maxPacketCount = 320;
+  Time interPacketInterval = Seconds (0.05); //how often to sent packets
   VoipServerHelper voipServer (port);
-  //  voipServer.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
   voipServer.SetAttribute ("Interval", TimeValue (interPacketInterval));
-  //  voipServer.SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
   ApplicationContainer apps = voipServer.Install (clientServerNodes.Get(1));
   apps.Start (Seconds (1.0));
-  //  apps.Add (voipServer.Install (clientServerNodes.Get(1)));
-
-//  UdpServerHelper server (port);
-// ApplicationContainer apps = server.Install (clientServerNodes.Get(1));
-//  apps.Start (Seconds (1.0));
 
  // Create one UdpClient application to send UDP datagrams from node zero to node one.
   VoipClientHelper voipClient (i.GetAddress(1), port);
   apps = voipClient.Install (clientServerNodes.Get(0)); 
   apps.Start (Seconds (2.0));
-//  apps.Add (voipClient.Install (clientServerNodes.Get(1)));
-
-//   uint32_t MaxPacketSize = 1024;
-//   Time interPacketInterval = Seconds (0.05);
-//   uint32_t maxPacketCount = 320;
-//   UdpClientHelper client (serverAddress, port);
-//   client.SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
-//   client.SetAttribute ("Interval", TimeValue (interPacketInterval));
-//   client.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
-//   apps = client.Install (clientServerNodes.Get (0));
-//   apps.Start (Seconds (2.0));
 
 /*
    // energy source //
@@ -260,18 +218,6 @@ int main (int argc, char *argv[])
 
 //   DeviceEnergyModelContainer deviceModels = liIonSourceHelper.Install (ueDevs, sources);
 
-   //configuring energy source helper
-//   liIonSourceHelper.Set("LiIonEnergySourceInitialEnergyJ", DoubleValue (35000.00)); //Joules
-//   liIonSourceHelper.Set("InitialCellVoltage", DoubleValue (3.7)); //ax voltage when fully charged
-//   liIonSourceHelper.Set("LiIonEnergyLowBatteryThreshold", DoubleValue (0.10)); //as a fraction of the initial energy
-//   liIonSourceHelper.Set("PeriodicEnergyUpdateInterval", TimeValue (Seconds (1.0))); //time between two consectutive periodic energy updates
-//   liIonSourceHelper->SetLiIonEnergySourceInitialEnergyJ (35000.00);
-
-//   liIonSourceHelper->SetInitialEnergy (35000.00);
-//   liIonSourceHelper->SetInitialSupplyVoltage(3.7);
-//   liIonSourceHelper->SetEnergyUpdateInterval (Time (1.0));
-
-
    //3000 mAh and 3.7V is average mobile phone
 
 //  PrintCellInfo (liIonSourceHelper);
@@ -279,7 +225,7 @@ int main (int argc, char *argv[])
 //mmwave tracing ALL LAYERS
 ptr_mmWave->EnableTraces (); //creates Dl* and Ul* files
 
-//mmwave LAYER tracing
+//Uncomment for specific mmwave LAYER tracing
 //ptr_Helper->EnablePhyTraces ();
 //ptr_Helper->EnableMacTraces ();
 //ptr_Helper->EnableRlcTraces ();
@@ -322,9 +268,6 @@ std::cout << " Lost Packets: " << i->second.lostPackets << "\n";
 
 //Flow monitor file generation
 flowMonitor->SerializeToXmlFile("FlowMonitormmwaveVoIPRandomWalk.xml", true, true); //histograms and probes enabled
-
-  // GtkConfigStore config;
-  // config.ConfigureAttributes ();
 
   Simulator::Destroy ();
   return 0;

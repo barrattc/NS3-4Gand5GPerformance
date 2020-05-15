@@ -42,7 +42,6 @@
 #include "ns3/flow-monitor-helper.h"
 #include "ns3/ipv4-flow-classifier.h"
 #include "ns3/mmwave-helper.h"
-//#include "ns3/gtk-config-store.h"
 
 //Define namespace
 using namespace ns3;
@@ -64,6 +63,8 @@ using namespace mmwave;
 
  NS_LOG_COMPONENT_DEFINE ("mmwaveHTTPRandomWalk");
  
+//Print sent and received bytes to console as the simulation runs
+
  void
  ServerConnectionEstablished (Ptr<const ThreeGppHttpServer>, Ptr<Socket>)
  {
@@ -93,6 +94,8 @@ using namespace mmwave;
  {
    NS_LOG_INFO ("Client received a packet of " << packet->GetSize () << " bytes from " << address);
  }
+
+//Calculate total sent and received bytes and print to console as the simulation runs
 
  void
  ClientMainObjectReceived (Ptr<const ThreeGppHttpClient>, Ptr<const Packet> packet)
@@ -174,15 +177,10 @@ int main (int argc, char *argv[])
   cmd.AddValue ("useCa", "Whether to use carrier aggregation.", useCa);
   cmd.Parse (argc, argv);
 
+   // Required for tx/rx bytes printing functions
    Time::SetResolution (Time::NS);
    LogComponentEnableAll (LOG_PREFIX_TIME);
-   //LogComponentEnableAll (LOG_PREFIX_FUNC);
-   //LogComponentEnable ("ThreeGppHttpClient", LOG_INFO);
    LogComponentEnable ("mmwaveHTTPRandomWalk", LOG_INFO);
-
-  //Other default inputs can be gathered from a pre-existing text file and loaded into a future simulation.
-  ConfigStore inputConfig;
-  inputConfig.ConfigureDefaults ();
 
   // Parse again so you can override default values from the command line
   cmd.Parse (argc, argv);
@@ -224,13 +222,10 @@ int main (int argc, char *argv[])
   mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
     "Mode", StringValue ("Time"), //time or distance mode
     "Time", StringValue ("2s"), //change current direction and speed after this delay
-    "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"), //speed of walk
-    "Bounds", RectangleValue (Rectangle (0.0, 20.0, 0.0, 20.0)));
+    "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"), //set constant speed of walk
+    "Bounds", RectangleValue (Rectangle (-50.0, 50.0, -50.0, 50.0)));
   mobility.Install (clientServerNodes.Get(0));
   BuildingsHelper::Install (clientServerNodes.Get(0));
-
-  // Default scheduler is PF (proportionally fair), uncomment to use RR (round robin)
-  //lteHelper->SetSchedulerType ("ns3::RrFfMacScheduler");
 
  // Create Devices and install them in the Nodes (eNB and UE)
   NetDeviceContainer enbDevs = ptr_mmWave->InstallEnbDevice (enbNodes);
@@ -238,11 +233,6 @@ int main (int argc, char *argv[])
 
   //Attach ue to enb
   ptr_mmWave->AttachToClosestEnb (ueDevs, enbDevs.Get (0));
-
-  //Whenever a user equipment is being provided with any service,
-  //the service has to be associated with a Radio Bearer specifying
-  //the configuration for Layer-2 and Physical Layer in order to have
-  //its QoS clearly defined.
 
   // Activate a data radio bearer
   enum EpsBearer::Qci q = EpsBearer::GBR_CONV_VOICE;
@@ -252,8 +242,8 @@ int main (int argc, char *argv[])
    //Create P2P link
    PointToPointHelper pointToPoint;
    //Set P2P attributes
-   pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
-   pointToPoint.SetChannelAttribute ("Delay", StringValue ("2ms"));
+   pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("10Gbps"));
+   pointToPoint.SetChannelAttribute ("Delay", StringValue ("5ms"));
    //install on client/server nodes
    NetDeviceContainer clientServerDevs;
    clientServerDevs = pointToPoint.Install (clientServerNodes);
@@ -322,20 +312,6 @@ int main (int argc, char *argv[])
 
 //   DeviceEnergyModelContainer deviceModels = liIonSourceHelper.Install (ueDevs, sources);
 
-
-//V1
-   //configuring energy source helper
-//   liIonSourceHelper.Set("LiIonEnergySourceInitialEnergyJ", DoubleValue (35000.00)); //Joules
-//   liIonSourceHelper.Set("InitialCellVoltage", DoubleValue (3.7)); //ax voltage when fully charged
-//   liIonSourceHelper.Set("LiIonEnergyLowBatteryThreshold", DoubleValue (0.10)); //as a fraction of the initial energy
-//   liIonSourceHelper.Set("PeriodicEnergyUpdateInterval", TimeValue (Seconds (1.0))); //time between two consectutive periodic energy updates
-//   liIonSourceHelper->SetLiIonEnergySourceInitialEnergyJ (35000.00);
-
-//   liIonSourceHelper->SetInitialEnergy (35000.00);
-//   liIonSourceHelper->SetInitialSupplyVoltage(3.7);
-//   liIonSourceHelper->SetEnergyUpdateInterval (Time (1.0));
-
-
    //3000 mAh and 3.7V is average mobile phone
 
 //  PrintCellInfo (liIonSourceHelper);
@@ -343,7 +319,7 @@ int main (int argc, char *argv[])
 //mmwave tracing ALL LAYERS
 ptr_mmWave->EnableTraces (); //creates Dl* and Ul* files
 
-//mmwave LAYER tracing
+//Uncomment for specific mmwave LAYER tracing
 //ptr_Helper->EnablePhyTraces ();
 //ptr_Helper->EnableMacTraces ();
 //ptr_Helper->EnableRlcTraces ();
@@ -362,9 +338,6 @@ flowMonitor = flowHelper.InstallAll();
 flowMonitor->SetAttribute("DelayBinWidth", DoubleValue(0.001));
 flowMonitor->SetAttribute("JitterBinWidth", DoubleValue(0.001));
 flowMonitor->SetAttribute("PacketSizeBinWidth", DoubleValue(20));
-
-//clientApps.Stop (Seconds (simTime));;
-//Simulator::Stop (Seconds(simTime+cleanup_time));
 
 //Running and Stopping simulation
 Simulator::Stop (Seconds (simTime));
@@ -389,9 +362,6 @@ Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
 
 //Flow monitor file generation
 flowMonitor->SerializeToXmlFile("FlowMonitormmwaveHTTPRandomWalk.xml", true, true); //histograms and probes enabled
-
-  // GtkConfigStore config;
-  // config.ConfigureAttributes ();
 
   Simulator::Destroy ();
   return 0;
